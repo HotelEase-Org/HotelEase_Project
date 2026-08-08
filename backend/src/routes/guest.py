@@ -1,0 +1,117 @@
+from datetime import date
+
+from flask import Blueprint, request, jsonify
+
+from ..extensions import db
+from ..models import Guest, Room, Booking
+from ..controllers.availability import (
+    is_room_available,
+    generate_reference,
+    nights_between,
+)
+
+guest_bp = Blueprint("guest", __name__, url_prefix="/api")
+
+
+def _parse_date(value):
+    # Expects YYYY-MM-DD; raises ValueError if malformed.
+    return date.fromisoformat(value)
+
+
+@guest_bp.get("/rooms/available")
+def available_rooms():
+    """Public: list room types available for a date range."""
+    try:
+        check_in = _parse_date(request.args["check_in"])
+        check_out = _parse_date(request.args["check_out"])
+    except (KeyError, ValueError):
+        return jsonify(error="check_in and check_out (YYYY-MM-DD) are required"), 400
+    if check_out <= check_in:
+        return jsonify(error="check_out must be after check_in"), 400
+
+    rooms = Room.query.filter(Room.status != "Maintenance").all()
+    available = [
+        r.to_dict()
+        for r in rooms
+        if is_room_available(r.room_id, check_in, check_out)
+    ]
+    return jsonify(rooms=available)
+
+
+@guest_bp.post("/bookings")
+def create_booking():
+    """Public booking request. Creates the guest if new, prevents double-booking."""
+    data = request.get_json(silent=True) or {}
+    required = ["full_name", "email", "phone_number", "room_id",
+                "check_in_date", "check_out_date"]
+    missing = [f for f in required if not data.get(f)]
+    if missing:
+        return jsonify(error=f"Missing fields: {', '.join(missing)}"), 400
+
+    try:
+        check_in = _parse_date(data["check_in_date"])
+        check_out = _parse_date(data["check_out_date"])
+    except ValueError:
+        return jsonify(error="Dates must be in YYYY-MM-DD format"), 400
+    if check_out <= check_in:
+        return jsonify(error="check_out must be after check_in"), 400
+
+    room = db.session.get(Room, data["room_id"])
+    if room is None:
+        return jsonify(error="Room not found"), 404
+
+    if not is_room_available(room.room_id, check_in, check_out):
+        return jsonify(error="Room is not available for those dates"), 409
+
+    # Reuse an existing guest by email, otherwise create one.
+    guest = Guest.query.filter_by(email=data["email"].strip()).first()
+    if guest is None:
+        guest = Guest(
+            full_name=data["full_name"].strip(),
+            email=data["email"].strip(),
+            phone_number=data["phone_number"].strip(),
+            id_number=(data.get("id_number") or "").strip() or None,
+        )
+        db.session.add(guest)
+        db.session.flush()  # assign guest_id before booking insert
+
+    nights = nights_between(check_in, check_out)
+    cost_total = float(room.rate_per_night) * nights
+
+    booking = Booking(
+        reference=generate_reference(),
+        guest_id=guest.guest_id,
+        room_id=room.room_id,
+        check_in_date=check_in,
+        check_out_date=check_out,
+        booking_status="Pending",
+        payment_status="Unpaid",
+        cost_total=cost_total,
+    )
+    db.session.add(booking)
+    db.session.commit()
+
+    return jsonify(
+        message="Booking request received",
+        reference=booking.reference,
+        booking=booking.to_dict(),
+    ), 201
+
+
+@guest_bp.get("/bookings/lookup")
+def lookup_booking():
+    """Public status check by reference plus email (light verification)."""
+    reference = (request.args.get("reference") or "").strip().upper()
+    email = (request.args.get("email") or "").strip()
+    if not reference or not email:
+        return jsonify(error="reference and email are required"), 400
+
+    booking = Booking.query.filter_by(reference=reference).first()
+    if booking is None or booking.guest.email.lower() != email.lower():
+        return jsonify(error="No matching booking found"), 404
+
+    result = booking.to_dict()
+    result["guest_name"] = booking.guest.full_name
+    result["room_number"] = booking.room.room_number
+    result["room_type"] = booking.room.room_type
+    return jsonify(booking=result)
