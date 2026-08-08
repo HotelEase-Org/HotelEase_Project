@@ -1,0 +1,32 @@
+# Python virtual environment
+venv/
+.venv/
+env/
+ENV/
+
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Flask instance folder (holds the local SQLite db)
+instance/
+
+# Local SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Test / coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local environment file (never commit real secrets)
+.env
+
+# Packaging
+*.egg-info/
+.eggs/
+build/
+dist/
