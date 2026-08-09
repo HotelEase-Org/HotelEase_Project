@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HotelEase -- Manager</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="side-logo"><svg class="he-emblem" viewBox="0 0 48 48" fill="none" aria-hidden="true" focusable="false"><defs><linearGradient id="heGside" x1="9" y1="7" x2="39" y2="41" gradientUnits="userSpaceOnUse"><stop stop-color="#f0d99f"/><stop offset=".55" stop-color="#c1912f"/><stop offset="1" stop-color="#7c5613"/></linearGradient></defs><circle cx="24" cy="24" r="14.5" fill="#1c2230"/><circle cx="24" cy="24" r="14.5" stroke="url(#heGside)" stroke-width="1.4" opacity=".85"/><path d="M26.5 6.7a17.6 17.6 0 0 1 14.6 9.4" stroke="url(#heGside)" stroke-width="2.3" stroke-linecap="round"/><path d="M21.5 41.3a17.6 17.6 0 0 1 -14.6 -9.4" stroke="url(#heGside)" stroke-width="2.3" stroke-linecap="round"/><path d="M19.7 18.3v11.4M28.3 18.3v11.4M19.7 24h8.6" stroke="url(#heGside)" stroke-width="2.4" stroke-linecap="round"/></svg><span>Hotel<span class="dot">Ease</span></span></div>
+    <nav class="side-nav">
+      <a href="manager.html" class="active">Overview</a>
+      <a href="#staff">Staff</a>
+      <a href="#rooms">Rooms</a>
+    </nav>
+    <div class="side-foot">
+      <div class="side-user" id="sideUser">Loading...</div>
+      <button class="side-logout" id="logoutBtn">Log Out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="content">
+      <div class="page-head">
+        <h1>Management Overview</h1>
+        <p id="periodLabel">Performance at a glance</p>
+      </div>
+
+      <div id="pageAlert" class="alert hidden"></div>
+
+      <!-- KPI row -->
+      <div class="grid cols-4" style="margin-bottom:20px;">
+        <div class="stat"><div class="label">Total Revenue</div><div class="value tab" id="kpiRevenue">--</div></div>
+        <div class="stat"><div class="label">Occupancy Rate</div><div class="value tab" id="kpiOcc">--</div></div>
+        <div class="stat"><div class="label">Total Bookings</div><div class="value tab" id="kpiBookings">--</div></div>
+        <div class="stat"><div class="label">Avg Booking Value</div><div class="value tab" id="kpiAov">--</div></div>
+      </div>
+
+      <div class="grid cols-2" style="margin-bottom:20px;">
+        <!-- Revenue trend -->
+        <div class="card">
+          <h2>Revenue Trend <span class="sub">by month</span></h2>
+          <div id="revChart"><div class="loading-block"><span class="spinner"></span> Loading...</div></div>
+        </div>
+        <!-- Bookings by room type -->
+        <div class="card">
+          <h2>Bookings by Room Type <span class="sub">all time</span></h2>
+          <div id="typeChart"><div class="loading-block"><span class="spinner"></span> Loading...</div></div>
+        </div>
+      </div>
+
+      <div class="grid cols-2">
+        <!-- Staff -->
+        <div class="card" id="staff">
+          <div class="row-between" style="margin-bottom:10px;">
+            <h2 class="mb0">Staff Accounts</h2>
+            <button class="btn btn-primary btn-sm" id="addStaffBtn">+ Add Staff</button>
+          </div>
+          <table>
+            <thead><tr><th>Name</th><th>Role</th><th>Username</th></tr></thead>
+            <tbody id="staffBody">
+              <tr><td colspan="3"><div class="loading-block"><span class="spinner"></span> Loading...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Room inventory -->
+        <div class="card" id="rooms">
+          <div class="row-between" style="margin-bottom:10px;">
+            <h2 class="mb0">Room Inventory</h2>
+            <button class="btn btn-primary btn-sm" id="addRoomBtn">+ Add Room</button>
+          </div>
+          <table>
+            <thead><tr><th>Type</th><th>Rooms</th><th>Rate / night</th><th>Occupied</th></tr></thead>
+            <tbody id="roomBody">
+              <tr><td colspan="4"><div class="loading-block"><span class="spinner"></span> Loading...</div></td></tr>
+            </tbody>
+          </table>
+          <div class="tag-note" style="margin-top:12px;">Rooms and nightly rates you set here feed the guest booking form and revenue reports.</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/manager.js"></script>
+</body>
+</html>

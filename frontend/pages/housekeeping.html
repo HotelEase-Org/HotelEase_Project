@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HotelEase -- Housekeeping</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="side-logo"><svg class="he-emblem" viewBox="0 0 48 48" fill="none" aria-hidden="true" focusable="false"><defs><linearGradient id="heGside" x1="9" y1="7" x2="39" y2="41" gradientUnits="userSpaceOnUse"><stop stop-color="#f0d99f"/><stop offset=".55" stop-color="#c1912f"/><stop offset="1" stop-color="#7c5613"/></linearGradient></defs><circle cx="24" cy="24" r="14.5" fill="#1c2230"/><circle cx="24" cy="24" r="14.5" stroke="url(#heGside)" stroke-width="1.4" opacity=".85"/><path d="M26.5 6.7a17.6 17.6 0 0 1 14.6 9.4" stroke="url(#heGside)" stroke-width="2.3" stroke-linecap="round"/><path d="M21.5 41.3a17.6 17.6 0 0 1 -14.6 -9.4" stroke="url(#heGside)" stroke-width="2.3" stroke-linecap="round"/><path d="M19.7 18.3v11.4M28.3 18.3v11.4M19.7 24h8.6" stroke="url(#heGside)" stroke-width="2.4" stroke-linecap="round"/></svg><span>Hotel<span class="dot">Ease</span></span></div>
+    <nav class="side-nav">
+      <a href="housekeeping.html" class="active">My Tasks</a>
+    </nav>
+    <div class="side-foot">
+      <div class="side-user" id="sideUser">Loading...</div>
+      <button class="side-logout" id="logoutBtn">Log Out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="content">
+      <div class="page-head">
+        <h1>Cleaning Tasks</h1>
+        <p>Rooms that need attention -- update status as you work.</p>
+      </div>
+
+      <div id="pageAlert" class="alert hidden"></div>
+
+      <!-- KPI row -->
+      <div class="grid cols-3" style="margin-bottom:20px;">
+        <div class="stat"><div class="label">To Clean</div><div class="value tab" id="kpiClean">--</div></div>
+        <div class="stat"><div class="label">Under Maintenance</div><div class="value tab" id="kpiMaint">--</div></div>
+        <div class="stat"><div class="label">Assigned To Me</div><div class="value tab" id="kpiMine">--</div></div>
+      </div>
+
+      <!-- Task list -->
+      <div class="card">
+        <h2>Rooms Needing Attention</h2>
+        <table>
+          <thead><tr><th>Room</th><th>Type</th><th>Status</th><th>Last Cleaned</th><th>Assigned</th><th>Action</th></tr></thead>
+          <tbody id="taskBody">
+            <tr><td colspan="6"><div class="loading-block"><span class="spinner"></span> Loading...</div></td></tr>
+          </tbody>
+        </table>
+        <div class="tag-note" style="margin-top:14px;">
+          <strong>Mark Clean</strong> makes the room Available for new guests. <strong>Flag Maintenance</strong> takes it out of service until it's fixed.
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/housekeeping.js"></script>
+</body>
+</html>

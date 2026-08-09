@@ -1,0 +1,78 @@
+/* ===== app.css -- runtime UI the static wireframes did not need ===== */
+
+.hidden { display: none !important; }
+
+/* topbar auth area (guest pages) */
+.topbar .auth-area { display: flex; align-items: center; gap: 10px; margin-left: 8px; }
+
+/* inline alerts (form feedback, page errors) */
+.alert {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 11px 14px;
+  font-size: .88rem;
+  display: flex; align-items: flex-start; gap: 9px;
+  margin-bottom: 14px;
+}
+.alert::before { content: ""; width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; background: currentColor; }
+.alert.info    { color: #8a6408; background: #f6edd7; border-color: #ecdcb0; }
+.alert.success { color: #15803d; background: #e8f5ec; border-color: #cfe9d7; }
+.alert.error   { color: #b91c1c; background: #fbe9e9; border-color: #f5d3d3; }
+.alert strong { font-weight: 700; }
+
+/* toast stack (top-right, auto-dismiss) */
+.toast-wrap {
+  position: fixed; top: 16px; right: 16px; z-index: 60;
+  display: flex; flex-direction: column; gap: 10px; max-width: 340px;
+}
+.toast {
+  background: var(--card); border: 1px solid var(--border);
+  border-left: 4px solid var(--muted);
+  border-radius: 9px; box-shadow: var(--shadow-lg);
+  padding: 12px 14px; font-size: .88rem; color: var(--text);
+  animation: toast-in .18s ease-out;
+}
+.toast.success { border-left-color: var(--ok); }
+.toast.error   { border-left-color: var(--crit); }
+.toast.info    { border-left-color: var(--action); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+/* spinner (button loading + page loading) */
+.spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid currentColor; border-right-color: transparent;
+  display: inline-block; animation: spin .6s linear infinite; vertical-align: -3px;
+}
+.loading-block { display: flex; align-items: center; gap: 10px; color: var(--muted); padding: 20px; font-size: .9rem; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* empty state inside cards/tables */
+.empty { color: var(--muted); text-align: center; padding: 22px 12px; font-size: .9rem; }
+td .empty { padding: 14px; }
+
+/* modal */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(15,23,42,.45);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 60px 16px; z-index: 50; overflow-y: auto;
+}
+.modal {
+  background: var(--card); border-radius: 12px; box-shadow: var(--shadow-lg);
+  width: 100%; max-width: 460px; padding: 22px;
+  animation: toast-in .16s ease-out;
+}
+.modal h2 { font-family: var(--font-display); font-weight: 600; margin: 0 0 16px; font-size: 1.32rem; letter-spacing: -.01em; }
+.modal .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+
+/* field-level error text */
+.field .error-text { color: var(--crit); font-size: .78rem; margin-top: 4px; }
+.field.invalid input, .field.invalid select { border-color: var(--crit); box-shadow: 0 0 0 3px rgba(185,28,28,.12); }
+
+/* reference box (booking confirmation) */
+.ref-box {
+  padding: 16px; background: #faf7ef; border: 1px dashed var(--border);
+  border-radius: 9px; text-align: center;
+}
+.ref-box .ref-label { color: var(--muted); font-size: .8rem; font-weight: 600; letter-spacing: .4px; }
+.ref-box .ref-code { font-family: var(--font-display); font-size: 2rem; font-weight: 700; letter-spacing: 2px; color: var(--action-hover); }
+.ref-box .ref-meta { color: var(--muted); font-size: .85rem; }

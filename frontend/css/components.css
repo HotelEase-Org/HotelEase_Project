@@ -1,0 +1,121 @@
+/* ===== cards, stats, tables, badges, forms, buttons ===== */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  transition: box-shadow var(--transition), border-color var(--transition);
+}
+.card:hover { box-shadow: var(--shadow-lg); }
+.card h2 { font-family: var(--font-display); font-weight: 600; margin: 0 0 14px; font-size: 1.18rem; letter-spacing: -.01em; }
+.card h2 .sub { font-family: var(--font-ui); font-weight: 400; color: var(--muted); font-size: .82rem; margin-left: 6px; letter-spacing: 0; }
+
+/* stat tile */
+.stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 17px 19px;
+  transition: box-shadow var(--transition), transform var(--transition), border-color var(--transition);
+}
+.stat:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); border-color: #ecd9a8; }
+.stat .label { color: var(--muted); font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+.stat .value { font-family: var(--font-display); font-size: 2rem; font-weight: 600; margin-top: 5px; letter-spacing: -.01em; }
+.stat .delta { font-size: .82rem; font-weight: 600; margin-top: 2px; }
+.stat .delta.up { color: var(--ok); }
+.stat .delta.down { color: var(--crit); }
+.stat .delta.muted { color: var(--muted); }
+.stat .value.tab { font-variant-numeric: tabular-nums; }
+
+/* stat tiles stay plain white -- state is shown by badges, not card color */
+
+/* tables */
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .4px; }
+tbody tr:hover, tr:hover { background: #faf8f3; }
+td.tab { font-variant-numeric: tabular-nums; }
+
+/* status badges */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: .78rem; font-weight: 600; white-space: nowrap;
+}
+.badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.badge.ok    { color: #15803d; background: #e8f5ec; }
+.badge.busy  { color: #334155; background: #eef1f5; }
+.badge.warn  { color: #b45309; background: #fbf1e3; }
+.badge.prog  { color: #8a6408; background: #f6edd7; }
+.badge.crit  { color: #b91c1c; background: #fbe9e9; }
+
+/* room tiles */
+.rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px,1fr)); gap: 12px; }
+.room {
+  border: 1px solid var(--border); border-radius: 9px; padding: 12px;
+  background: #fff; text-align: center;
+}
+.room .no { font-weight: 700; font-size: 1.15rem; }
+.room .type { color: var(--muted); font-size: .78rem; margin-bottom: 8px; }
+.room.s-ok   { border-left: 4px solid var(--ok); }
+.room.s-busy { border-left: 4px solid var(--busy); }
+.room.s-warn { border-left: 4px solid var(--warn); }
+.room.s-prog { border-left: 4px solid var(--prog); }
+.room.s-crit { border-left: 4px solid var(--crit); }
+
+/* buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 10px 17px; border-radius: 9px; border: 1px solid transparent;
+  font-size: .9rem; font-weight: 600; cursor: pointer; font-family: inherit;
+  transition: background var(--transition), box-shadow var(--transition), transform 90ms ease, border-color var(--transition);
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary { background: var(--brand); color: #fff; box-shadow: 0 1px 2px rgba(16,20,28,.24); }
+.btn-primary:hover { background: var(--brand-strong); text-decoration: none; box-shadow: 0 5px 14px rgba(16,20,28,.24); }
+.btn-ghost { background: #fff; border-color: var(--border); color: var(--text); }
+.btn-ghost:hover { background: #faf7ef; border-color: #e2d8c0; }
+.btn-danger { background: #fff; border-color: #fbd5d5; color: var(--crit); }
+.btn-danger:hover { background: #fbe9e9; }
+.btn-sm { padding: 6px 12px; font-size: .82rem; border-radius: 8px; }
+.btn-block { width: 100%; }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* forms */
+.field { margin-bottom: 15px; }
+.field label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 5px; }
+.field input, .field select, .field textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: .92rem; font-family: inherit; background:#fff; color:var(--text);
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none; border-color: var(--action); box-shadow: 0 0 0 3px rgba(184,134,11,.18);
+}
+.field .hint { color: var(--faint); font-size: .78rem; margin-top: 4px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 560px){ .form-row { grid-template-columns: 1fr; } }
+
+/* misc */
+.muted { color: var(--muted); }
+.center { text-align: center; }
+.mt0 { margin-top: 0; } .mb0 { margin-bottom: 0; }
+.row-between { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap: wrap; }
+.tag-note { background:#f4f1e9; border:1px solid var(--border); color:#5c5647; font-size:.8rem; padding:8px 12px; border-radius:8px; }
+
+/* simple bar chart (occupancy / revenue) */
+.bars { display:flex; align-items:flex-end; gap:14px; height:170px; padding-top:10px; }
+.bars .bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end; }
+.bars .bar {
+  width:100%; max-width:46px; border-radius:4px 4px 0 0; background: var(--action);
+  position:relative; min-height: 2px;
+}
+.bars .bar .v { position:absolute; top:-20px; left:0; right:0; text-align:center; font-size:.75rem; font-weight:600; color:var(--muted); }
+.bars .bar-col .x { font-size:.78rem; color:var(--muted); }
+
+/* donut legend */
+.legend { display:flex; flex-direction:column; gap:10px; }
+.legend .item { display:flex; align-items:center; gap:9px; font-size:.88rem; }
+.legend .swatch { width:12px; height:12px; border-radius:3px; }
