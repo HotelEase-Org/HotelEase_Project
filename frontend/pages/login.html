@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HotelEase -- Staff Login</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a href="welcome.html" class="logo">
+    <svg class="he-emblem" viewBox="0 0 48 48" fill="none" aria-hidden="true" focusable="false"><defs><linearGradient id="heGnav" x1="9" y1="7" x2="39" y2="41" gradientUnits="userSpaceOnUse"><stop stop-color="#f0d99f"/><stop offset=".55" stop-color="#c1912f"/><stop offset="1" stop-color="#7c5613"/></linearGradient></defs><circle cx="24" cy="24" r="14.5" fill="#1c2230"/><circle cx="24" cy="24" r="14.5" stroke="url(#heGnav)" stroke-width="1.4" opacity=".85"/><path d="M26.5 6.7a17.6 17.6 0 0 1 14.6 9.4" stroke="url(#heGnav)" stroke-width="2.3" stroke-linecap="round"/><path d="M21.5 41.3a17.6 17.6 0 0 1 -14.6 -9.4" stroke="url(#heGnav)" stroke-width="2.3" stroke-linecap="round"/><path d="M19.7 18.3v11.4M28.3 18.3v11.4M19.7 24h8.6" stroke="url(#heGnav)" stroke-width="2.4" stroke-linecap="round"/></svg>
+    <span class="brand-text">Hotel<span class="dot">Ease</span></span>
+  </a>
+  <nav>
+    <a href="index.html">Book a Room</a>
+    <a href="login.html" class="active">Staff Login</a>
+  </nav>
+</header>
+
+<div class="container" style="max-width:440px;">
+  <div class="card" style="margin-top:40px;">
+    <div class="center" style="margin-bottom:8px;">
+      <svg class="he-emblem lg" style="margin:0 auto 12px;" viewBox="0 0 48 48" fill="none" aria-hidden="true" focusable="false"><defs><linearGradient id="heGcard" x1="9" y1="7" x2="39" y2="41" gradientUnits="userSpaceOnUse"><stop stop-color="#f0d99f"/><stop offset=".55" stop-color="#c1912f"/><stop offset="1" stop-color="#7c5613"/></linearGradient></defs><circle cx="24" cy="24" r="14.5" fill="#1c2230"/><circle cx="24" cy="24" r="14.5" stroke="url(#heGcard)" stroke-width="1.4" opacity=".85"/><path d="M26.5 6.7a17.6 17.6 0 0 1 14.6 9.4" stroke="url(#heGcard)" stroke-width="2.3" stroke-linecap="round"/><path d="M21.5 41.3a17.6 17.6 0 0 1 -14.6 -9.4" stroke="url(#heGcard)" stroke-width="2.3" stroke-linecap="round"/><path d="M19.7 18.3v11.4M28.3 18.3v11.4M19.7 24h8.6" stroke="url(#heGcard)" stroke-width="2.4" stroke-linecap="round"/></svg>
+      <div class="logo" style="font-family:var(--font-display); color:var(--brand); font-size:1.7rem; font-weight:600; letter-spacing:-.01em;">Hotel<span style="color:var(--action)">Ease</span></div>
+      <p class="muted mt0">Staff sign in</p>
+    </div>
+
+    <div id="loginAlert" class="alert hidden"></div>
+
+    <form id="loginForm" novalidate>
+      <div class="field">
+        <label>Username</label>
+        <input name="username" type="text" placeholder="e.g. reception" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input name="password" type="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="loginBtn">Log In</button>
+    </form>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/login.js"></script>
+</body>
+</html>

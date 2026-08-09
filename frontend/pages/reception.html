@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HotelEase -- Front Desk</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="side-logo"><svg class="he-emblem" viewBox="0 0 48 48" fill="none" aria-hidden="true" focusable="false"><defs><linearGradient id="heGside" x1="9" y1="7" x2="39" y2="41" gradientUnits="userSpaceOnUse"><stop stop-color="#f0d99f"/><stop offset=".55" stop-color="#c1912f"/><stop offset="1" stop-color="#7c5613"/></linearGradient></defs><circle cx="24" cy="24" r="14.5" fill="#1c2230"/><circle cx="24" cy="24" r="14.5" stroke="url(#heGside)" stroke-width="1.4" opacity=".85"/><path d="M26.5 6.7a17.6 17.6 0 0 1 14.6 9.4" stroke="url(#heGside)" stroke-width="2.3" stroke-linecap="round"/><path d="M21.5 41.3a17.6 17.6 0 0 1 -14.6 -9.4" stroke="url(#heGside)" stroke-width="2.3" stroke-linecap="round"/><path d="M19.7 18.3v11.4M28.3 18.3v11.4M19.7 24h8.6" stroke="url(#heGside)" stroke-width="2.4" stroke-linecap="round"/></svg><span>Hotel<span class="dot">Ease</span></span></div>
+    <nav class="side-nav">
+      <a href="reception.html" class="active">Dashboard</a>
+      <a href="#bookings">Bookings</a>
+      <a href="#rooms">Rooms</a>
+      <a href="index.html">New Booking</a>
+    </nav>
+    <div class="side-foot">
+      <div class="side-user" id="sideUser">Loading...</div>
+      <button class="side-logout" id="logoutBtn">Log Out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="content">
+      <div class="page-head">
+        <h1>Front Desk</h1>
+        <p id="todayLabel"></p>
+      </div>
+
+      <div id="pageAlert" class="alert hidden"></div>
+
+      <!-- KPI row -->
+      <div class="grid cols-4" style="margin-bottom:20px;" id="kpiRow">
+        <div class="stat"><div class="label">Arrivals Today</div><div class="value tab" id="kpiArrivals">--</div></div>
+        <div class="stat"><div class="label">Departures Today</div><div class="value tab" id="kpiDepartures">--</div></div>
+        <div class="stat"><div class="label">Rooms Occupied</div><div class="value tab" id="kpiOccupied">--</div><div class="delta muted" id="kpiOccPct"></div></div>
+        <div class="stat"><div class="label">Awaiting Cleaning</div><div class="value tab" id="kpiCleaning">--</div><div class="delta muted">flagged to housekeeping</div></div>
+      </div>
+
+      <div class="grid cols-2" style="margin-bottom:20px;">
+        <!-- Today's arrivals & departures -->
+        <div class="card" id="bookings">
+          <div class="row-between" style="margin-bottom:10px;">
+            <h2 class="mb0">Today's Arrivals &amp; Departures</h2>
+            <a class="btn btn-primary btn-sm" href="index.html">+ New Booking</a>
+          </div>
+          <table>
+            <thead><tr><th>Ref</th><th>Guest</th><th>Room</th><th>Status</th><th></th></tr></thead>
+            <tbody id="arrivalsBody">
+              <tr><td colspan="5"><div class="loading-block"><span class="spinner"></span> Loading...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Lookup + payment -->
+        <div class="grid" style="align-content:start;">
+          <div class="card">
+            <h2>Look Up Today's Guest</h2>
+            <div class="form-row">
+              <div class="field" style="margin-bottom:0;">
+                <label>Booking Ref or Guest Name</label>
+                <input id="deskSearch" placeholder="HE-2048 or Ama Boateng">
+              </div>
+              <div class="field" style="margin-bottom:0; align-self:end;">
+                <button class="btn btn-primary btn-block" id="deskSearchBtn">Search</button>
+              </div>
+            </div>
+            <div id="deskSearchResult" class="hidden" style="margin-top:12px;"></div>
+          </div>
+
+          <div class="card">
+            <h2>Record Payment <span class="sub" id="payTarget">select a booking</span></h2>
+            <div id="payAlert" class="alert hidden"></div>
+            <form id="payForm" novalidate>
+              <input type="hidden" id="payBookingId">
+              <div class="form-row">
+                <div class="field"><label>Amount (GH₵)</label><input id="payAmount" class="tab" inputmode="decimal" placeholder="0.00"></div>
+                <div class="field"><label>Method</label>
+                  <select id="payMethod"><option>Cash</option><option>Mobile Money</option><option>Card</option></select>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary btn-block" id="payBtn" disabled>Record Payment</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Room status board -->
+      <div class="card" id="rooms">
+        <div class="row-between" style="margin-bottom:14px;">
+          <h2 class="mb0">Room Status Board</h2>
+          <div class="muted" style="font-size:.8rem;">
+            <span class="badge ok" style="margin-right:4px;">Available</span>
+            <span class="badge busy" style="margin-right:4px;">Occupied</span>
+            <span class="badge warn" style="margin-right:4px;">Cleaning</span>
+            <span class="badge crit">Maintenance</span>
+          </div>
+        </div>
+        <div class="rooms" id="roomBoard">
+          <div class="loading-block"><span class="spinner"></span> Loading rooms...</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/reception.js"></script>
+</body>
+</html>

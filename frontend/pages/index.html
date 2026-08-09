@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HotelEase -- Book a Room</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a href="welcome.html" class="logo">
+    <svg class="he-emblem" viewBox="0 0 48 48" fill="none" aria-hidden="true" focusable="false"><defs><linearGradient id="heGnav" x1="9" y1="7" x2="39" y2="41" gradientUnits="userSpaceOnUse"><stop stop-color="#f0d99f"/><stop offset=".55" stop-color="#c1912f"/><stop offset="1" stop-color="#7c5613"/></linearGradient></defs><circle cx="24" cy="24" r="14.5" fill="#1c2230"/><circle cx="24" cy="24" r="14.5" stroke="url(#heGnav)" stroke-width="1.4" opacity=".85"/><path d="M26.5 6.7a17.6 17.6 0 0 1 14.6 9.4" stroke="url(#heGnav)" stroke-width="2.3" stroke-linecap="round"/><path d="M21.5 41.3a17.6 17.6 0 0 1 -14.6 -9.4" stroke="url(#heGnav)" stroke-width="2.3" stroke-linecap="round"/><path d="M19.7 18.3v11.4M28.3 18.3v11.4M19.7 24h8.6" stroke="url(#heGnav)" stroke-width="2.4" stroke-linecap="round"/></svg>
+    <span class="brand-text">Hotel<span class="dot">Ease</span></span>
+  </a>
+  <nav>
+    <a href="index.html" class="active">Book a Room</a>
+    <a href="#status">Check My Booking</a>
+    <a href="login.html">Staff Login</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="page-head">
+    <h1>Book Your Stay</h1>
+    <p>Fill the form below. No account needed -- you'll get a booking reference to track your reservation.</p>
+  </div>
+
+  <div class="grid cols-2">
+    <!-- Booking form -->
+    <div class="card">
+      <h2>Reservation Details</h2>
+      <div id="bookingAlert" class="alert hidden"></div>
+
+      <form id="bookingForm" novalidate>
+        <div class="form-row">
+          <div class="field">
+            <label>Full Name</label>
+            <input name="full_name" type="text" placeholder="e.g. Ama Boateng" required>
+          </div>
+          <div class="field">
+            <label>Phone Number</label>
+            <input name="phone_number" type="text" placeholder="e.g. 024 123 4567" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Email</label>
+            <input name="email" type="email" placeholder="you@example.com" required>
+          </div>
+          <div class="field">
+            <label>Ghana Card / ID Number</label>
+            <input name="id_number" type="text" placeholder="GHA-000000000-0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Check-in Date</label>
+            <input name="check_in_date" type="date" required>
+          </div>
+          <div class="field">
+            <label>Check-out Date</label>
+            <input name="check_out_date" type="date" required>
+          </div>
+        </div>
+        <div class="field">
+          <label>Room</label>
+          <select name="room_id" id="roomSelect" required disabled>
+            <option value="">Pick your dates to see availability</option>
+          </select>
+          <div class="hint" id="roomHint">Availability is checked automatically to prevent double-booking.</div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Submit Booking Request</button>
+      </form>
+    </div>
+
+    <!-- Right column: confirmation + status lookup -->
+    <div class="grid" style="align-content:start;">
+      <!-- Confirmation (hidden until a booking is made) -->
+      <div class="card hidden" id="confirmCard" style="border-top:3px solid var(--ok);">
+        <h2>Booking Confirmed &#10003;</h2>
+        <p class="muted mt0">Save your reference -- you'll need it to check your booking.</p>
+        <div class="ref-box">
+          <div class="ref-label">YOUR BOOKING REFERENCE</div>
+          <div class="ref-code" id="confirmRef">HE-000000</div>
+          <div class="ref-meta" id="confirmMeta"></div>
+        </div>
+        <div class="tag-note" style="margin-top:14px;">Payment is settled in person at reception (cash / Mobile Money).</div>
+      </div>
+
+      <!-- Status lookup -->
+      <div class="card" id="status">
+        <h2>Check My Booking</h2>
+        <p class="muted mt0">Already booked? Look up your reservation status.</p>
+        <div id="lookupAlert" class="alert hidden"></div>
+        <form id="lookupForm" novalidate>
+          <div class="field">
+            <label>Booking Reference</label>
+            <input name="reference" type="text" placeholder="e.g. HE-2048" required>
+          </div>
+          <div class="field">
+            <label>Email used to book</label>
+            <input name="email" type="email" placeholder="Confirm it's you" required>
+          </div>
+          <button type="submit" class="btn btn-ghost btn-block" id="lookupBtn">Check Status</button>
+        </form>
+        <div id="lookupResult" class="hidden" style="margin-top:14px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/booking.js"></script>
+</body>
+</html>
