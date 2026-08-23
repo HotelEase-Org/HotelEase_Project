@@ -4,6 +4,7 @@ from flask import Blueprint, request, jsonify
 
 from ..extensions import db
 from ..models import Guest, Room, Booking
+from ..services.storage import upload_id_document, UploadError
 from ..controllers.availability import (
     is_room_available,
     generate_reference,
@@ -40,28 +41,56 @@ def available_rooms():
 
 @guest_bp.post("/bookings")
 def create_booking():
-    """Public booking request. Creates the guest if new, prevents double-booking."""
-    data = request.get_json(silent=True) or {}
+    """Public booking request. Accepts JSON or multipart/form-data.
+
+    When sent as multipart with an "id_document" file, the file is streamed to
+    the private S3 bucket and its object key is stored on the booking. The file
+    is never written to local disk. Creates the guest if new; blocks double
+    bookings.
+    """
+    # Read the fields uniformly whether the client sent JSON or a form.
+    if request.content_type and request.content_type.startswith("multipart/form-data"):
+        data = request.form
+        id_document = request.files.get("id_document")
+    else:
+        data = request.get_json(silent=True) or {}
+        id_document = None
+
     required = ["full_name", "email", "phone_number", "room_id",
                 "check_in_date", "check_out_date"]
     missing = [f for f in required if not data.get(f)]
     if missing:
         return jsonify(error=f"Missing fields: {', '.join(missing)}"), 400
 
+    # room_id arrives as an int in JSON but a string in a form; coerce safely.
+    try:
+        room_id = int(data.get("room_id"))
+    except (TypeError, ValueError):
+        return jsonify(error="A valid room_id is required"), 400
+
     try:
         check_in = _parse_date(data["check_in_date"])
         check_out = _parse_date(data["check_out_date"])
-    except ValueError:
+    except (KeyError, ValueError):
         return jsonify(error="Dates must be in YYYY-MM-DD format"), 400
     if check_out <= check_in:
         return jsonify(error="check_out must be after check_in"), 400
 
-    room = db.session.get(Room, data["room_id"])
+    room = db.session.get(Room, room_id)
     if room is None:
         return jsonify(error="Room not found"), 404
 
     if not is_room_available(room.room_id, check_in, check_out):
         return jsonify(error="Room is not available for those dates"), 409
+
+    # Validate and stream the ID document to S3 BEFORE writing the booking, so a
+    # bad upload fails cleanly instead of leaving a half-created record.
+    id_document_key = None
+    if id_document is not None and id_document.filename:
+        try:
+            id_document_key = upload_id_document(id_document)
+        except UploadError as e:
+            return jsonify(error=str(e)), 400
 
     # Reuse an existing guest by email, otherwise create one.
     guest = Guest.query.filter_by(email=data["email"].strip()).first()
@@ -87,6 +116,7 @@ def create_booking():
         booking_status="Pending",
         payment_status="Unpaid",
         cost_total=cost_total,
+        id_document_key=id_document_key,
     )
     db.session.add(booking)
     db.session.commit()
