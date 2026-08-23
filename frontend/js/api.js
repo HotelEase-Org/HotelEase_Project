@@ -30,8 +30,15 @@ async function api(path, { method = "GET", body, params } = {}) {
 
   const options = { method, credentials: "include", headers: {} };
   if (body !== undefined) {
-    options.headers["Content-Type"] = "application/json";
-    options.body = JSON.stringify(body);
+    if (body instanceof FormData) {
+      // File upload: hand the FormData straight to fetch. Do NOT set a
+      // Content-Type header -- the browser sets multipart/form-data with the
+      // correct boundary automatically. Setting it by hand breaks the upload.
+      options.body = body;
+    } else {
+      options.headers["Content-Type"] = "application/json";
+      options.body = JSON.stringify(body);
+    }
   }
 
   let res;
@@ -68,6 +75,11 @@ async function api(path, { method = "GET", body, params } = {}) {
 const http = {
   get: (path, params) => api(path, { params }),
   post: (path, body) => api(path, { method: "POST", body }),
+  patch: (path, body) => api(path, { method: "PATCH", body }),
+  del: (path) => api(path, { method: "DELETE" }),
+  // Same as post, but for a FormData body (file uploads). The browser sets the
+  // multipart Content-Type + boundary; api() detects FormData and leaves it be.
+  postForm: (path, formData) => api(path, { method: "POST", body: formData }),
 };
 
 /* Auth --------------------------------------------------------------------
