@@ -115,27 +115,25 @@ form.addEventListener("submit", async (e) => {
     return;
   }
 
-  // Validate the ID file in the browser first, so the guest gets an instant
-  // message instead of waiting for the server to reject it. The backend
-  // re-checks the same rules -- this is only for a nicer experience.
+  // The ID upload is optional. Only validate it if the guest actually chose a
+  // file -- the backend re-checks the same rules. A guest may instead present
+  // their ID at the front desk on arrival.
   const idFile = idDocument.files[0];
-  if (!idFile) {
-    showAlert(bookingAlert, "error", "Please attach a photo or PDF of your ID.");
-    return;
-  }
-  if (!ID_TYPES.includes(idFile.type)) {
-    showAlert(bookingAlert, "error", "Your ID must be a JPG, PNG, or PDF file.");
-    return;
-  }
-  if (idFile.size > ID_MAX_BYTES) {
-    showAlert(bookingAlert, "error", "Your ID file must be 5 MB or smaller.");
-    return;
+  if (idFile) {
+    if (!ID_TYPES.includes(idFile.type)) {
+      showAlert(bookingAlert, "error", "Your ID must be a JPG, PNG, or PDF file.");
+      return;
+    }
+    if (idFile.size > ID_MAX_BYTES) {
+      showAlert(bookingAlert, "error", "Your ID file must be 5 MB or smaller.");
+      return;
+    }
   }
 
-  // Send as multipart/form-data so the file rides along with the booking.
+  // Send as multipart/form-data so the file (if any) rides along with the booking.
   const payload = new FormData();
   for (const [key, value] of Object.entries(fields)) payload.append(key, value);
-  payload.append("id_document", idFile);
+  if (idFile) payload.append("id_document", idFile);
 
   const opt = roomSelect.selectedOptions[0];
   setLoading(submitBtn, true, "Submitting...");
