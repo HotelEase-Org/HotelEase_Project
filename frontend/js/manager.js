@@ -8,14 +8,21 @@ const CAT_COLORS = ["#b8860b", "#64748b", "#2f6f9f", "#7c3aed", "#0f766e", "#be5
 const ROLE_BADGE = { manager: "busy", receptionist: "ok", housekeeping: "warn" };
 const MGR_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+let currentUser = null;   // to block deleting your own account
+let staffCache = [];      // for prefilling the edit modal
+let roomsCache = [];
+
 (async function init() {
   const user = await requireRole(["manager"]);
   if (!user) return;
+  currentUser = user;
 
   $("#sideUser").textContent = `${user.full_name} · Manager`;
   $("#logoutBtn").addEventListener("click", logout);
-  $("#addStaffBtn").addEventListener("click", openStaffModal);
-  $("#addRoomBtn").addEventListener("click", openRoomModal);
+  $("#addStaffBtn").addEventListener("click", () => openStaffModal());
+  $("#addRoomBtn").addEventListener("click", () => openRoomModal());
+  wireStaffActions();
+  wireRoomListActions();
 
   await Promise.all([loadAnalytics(), loadStaff(), loadRooms()]);
 })();
@@ -101,34 +108,61 @@ function renderTypeChart(items, total) {
 async function loadStaff() {
   try {
     const { staff } = await http.get("/api/manager/staff");
+    staffCache = staff;
     const body = $("#staffBody");
-    if (!staff.length) { body.innerHTML = `<tr><td colspan="3"><div class="empty">No staff accounts yet.</div></td></tr>`; return; }
-    body.innerHTML = staff.map((s) => `<tr>
-      <td>${esc(s.full_name)}</td>
-      <td><span class="badge ${ROLE_BADGE[s.role] || "busy"}">${esc(s.role)}</span></td>
-      <td class="muted">${esc(s.username)}</td>
-    </tr>`).join("");
+    if (!staff.length) { body.innerHTML = `<tr><td colspan="4"><div class="empty">No staff accounts yet.</div></td></tr>`; return; }
+    body.innerHTML = staff.map((s) => {
+      const isSelf = currentUser && s.staff_id === currentUser.staff_id;
+      const del = isSelf ? "" : ` <button class="btn btn-danger btn-sm" data-saction="delete" data-id="${s.staff_id}">Delete</button>`;
+      return `<tr>
+        <td>${esc(s.full_name)}</td>
+        <td><span class="badge ${ROLE_BADGE[s.role] || "busy"}">${esc(s.role)}</span></td>
+        <td class="muted">${esc(s.username)}</td>
+        <td><button class="btn btn-ghost btn-sm" data-saction="edit" data-id="${s.staff_id}">Edit</button>${del}</td>
+      </tr>`;
+    }).join("");
   } catch (err) {
-    $("#staffBody").innerHTML = `<tr><td colspan="3"><div class="empty">${esc(err.message)}</div></td></tr>`;
+    $("#staffBody").innerHTML = `<tr><td colspan="4"><div class="empty">${esc(err.message)}</div></td></tr>`;
   }
 }
 
-function openStaffModal() {
+function wireStaffActions() {
+  $("#staffBody").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-saction]");
+    if (!btn) return;
+    const id = Number(btn.dataset.id);
+    const s = staffCache.find((x) => x.staff_id === id);
+    if (btn.dataset.saction === "edit") {
+      if (s) openStaffModal(s);
+    } else if (btn.dataset.saction === "delete") {
+      if (!confirm(`Delete the account for ${s ? s.full_name : "this staff member"}? This cannot be undone.`)) return;
+      try {
+        await http.del(`/api/manager/staff/${id}`);
+        toast("Staff account deleted", "success");
+        await loadStaff();
+      } catch (err) { toast(err.message, "error"); }
+    }
+  });
+}
+
+function openStaffModal(existing) {
+  const isEdit = !!existing;
+  const roleOpts = ["receptionist", "housekeeping", "manager"].map((r) =>
+    `<option value="${r}"${existing && existing.role === r ? " selected" : ""}>${r.charAt(0).toUpperCase() + r.slice(1)}</option>`
+  ).join("");
   openModal(`
-    <h2>Add Staff Account</h2>
+    <h2>${isEdit ? "Edit Staff Account" : "Add Staff Account"}</h2>
     <div id="mAlert" class="alert hidden"></div>
     <form id="mStaffForm" novalidate>
-      <div class="field"><label>Full Name</label><input name="full_name" required></div>
-      <div class="field"><label>Role</label>
-        <select name="role"><option value="receptionist">Receptionist</option><option value="housekeeping">Housekeeping</option><option value="manager">Manager</option></select>
-      </div>
+      <div class="field"><label>Full Name</label><input name="full_name" value="${isEdit ? esc(existing.full_name) : ""}" required></div>
+      <div class="field"><label>Role</label><select name="role">${roleOpts}</select></div>
       <div class="form-row">
-        <div class="field"><label>Username</label><input name="username" autocomplete="off" required></div>
-        <div class="field"><label>Password</label><input name="password" type="text" autocomplete="off" required></div>
+        <div class="field"><label>Username</label><input name="username" autocomplete="off" value="${isEdit ? esc(existing.username) : ""}" ${isEdit ? "disabled" : "required"}></div>
+        <div class="field"><label>Password ${isEdit ? '<span class="muted">(blank = keep)</span>' : ""}</label><input name="password" type="text" autocomplete="off" ${isEdit ? "" : "required"}></div>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" data-close>Cancel</button>
-        <button type="submit" class="btn btn-primary" id="mStaffBtn">Create Account</button>
+        <button type="submit" class="btn btn-primary" id="mStaffBtn">${isEdit ? "Save Changes" : "Create Account"}</button>
       </div>
     </form>`);
   const form = $("#mStaffForm");
@@ -136,22 +170,31 @@ function openStaffModal() {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     clearAlert($("#mAlert"));
+    const btn = $("#mStaffBtn");
+    if (!form.full_name.value.trim()) { showAlert($("#mAlert"), "error", "Full name is required."); return; }
+
+    if (isEdit) {
+      const payload = { full_name: form.full_name.value.trim(), role: form.role.value };
+      if (form.password.value) payload.password = form.password.value;
+      setLoading(btn, true, "Saving...");
+      try {
+        await http.patch(`/api/manager/staff/${existing.staff_id}`, payload);
+        closeModal(); toast("Staff account updated", "success"); await loadStaff();
+      } catch (err) { showAlert($("#mAlert"), "error", err.message); setLoading(btn, false); }
+      return;
+    }
+
     const payload = {
       full_name: form.full_name.value.trim(),
       role: form.role.value,
       username: form.username.value.trim(),
       password: form.password.value,
     };
-    if (!payload.full_name || !payload.username || !payload.password) {
-      showAlert($("#mAlert"), "error", "All fields are required."); return;
-    }
-    const btn = $("#mStaffBtn");
+    if (!payload.username || !payload.password) { showAlert($("#mAlert"), "error", "All fields are required."); return; }
     setLoading(btn, true, "Creating...");
     try {
       await http.post("/api/manager/staff", payload);
-      closeModal();
-      toast("Staff account created", "success");
-      await loadStaff();
+      closeModal(); toast("Staff account created", "success"); await loadStaff();
     } catch (err) {
       showAlert($("#mAlert"), "error", err.status === 409 ? "That username is already taken." : err.message);
       setLoading(btn, false);
@@ -163,10 +206,52 @@ function openStaffModal() {
 async function loadRooms() {
   try {
     const { rooms } = await http.get("/api/manager/rooms");
+    roomsCache = rooms;
     renderRoomInventory(rooms);
+    renderRoomList(rooms);
   } catch (err) {
     $("#roomBody").innerHTML = `<tr><td colspan="4"><div class="empty">${esc(err.message)}</div></td></tr>`;
   }
+}
+
+/* Per-room list with edit / delete (below the aggregated inventory). */
+function renderRoomList(rooms) {
+  const body = $("#roomListBody");
+  if (!body) return;
+  if (!rooms.length) { body.innerHTML = `<tr><td colspan="5"><div class="empty">No rooms yet.</div></td></tr>`; return; }
+  body.innerHTML = rooms.map((r) => `<tr>
+    <td class="tab" style="font-weight:700;">${esc(r.room_number)}</td>
+    <td>${esc(r.room_type)}</td>
+    <td class="tab">${money(r.rate_per_night)}</td>
+    <td>${badge(r.status)}</td>
+    <td>
+      <button class="btn btn-ghost btn-sm" data-raction="edit" data-id="${r.room_id}">Edit</button>
+      <button class="btn btn-danger btn-sm" data-raction="delete" data-id="${r.room_id}">Delete</button>
+    </td>
+  </tr>`).join("");
+}
+
+function wireRoomListActions() {
+  const body = $("#roomListBody");
+  if (!body) return;
+  body.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-raction]");
+    if (!btn) return;
+    const id = Number(btn.dataset.id);
+    const r = roomsCache.find((x) => x.room_id === id);
+    if (btn.dataset.raction === "edit") {
+      if (r) openRoomModal(r);
+    } else if (btn.dataset.raction === "delete") {
+      if (!confirm(`Delete Room ${r ? r.room_number : id}? Rooms with bookings cannot be deleted.`)) return;
+      try {
+        await http.del(`/api/manager/rooms/${id}`);
+        toast("Room deleted", "success");
+        await Promise.all([loadRooms(), loadAnalytics()]);
+      } catch (err) {
+        toast(err.status === 409 ? err.message : err.message, "error");
+      }
+    }
+  });
 }
 
 function renderRoomInventory(rooms) {
@@ -203,19 +288,26 @@ function renderRoomInventory(rooms) {
   </tr>`;
 }
 
-function openRoomModal() {
+function openRoomModal(existing) {
+  const isEdit = !!existing;
+  const statuses = ["Available", "Cleaning", "InProgress", "Occupied", "Maintenance"];
+  const statusField = isEdit ? `
+      <div class="field"><label>Status</label><select name="status">
+        ${statuses.map((s) => `<option value="${s}"${existing.status === s ? " selected" : ""}>${badgeMeta(s).label}</option>`).join("")}
+      </select></div>` : "";
   openModal(`
-    <h2>Add Room</h2>
+    <h2>${isEdit ? "Edit Room" : "Add Room"}</h2>
     <div id="mAlert" class="alert hidden"></div>
     <form id="mRoomForm" novalidate>
       <div class="form-row">
-        <div class="field"><label>Room Number</label><input name="room_number" placeholder="e.g. 104" required></div>
-        <div class="field"><label>Room Type</label><input name="room_type" placeholder="e.g. Standard" required></div>
+        <div class="field"><label>Room Number</label><input name="room_number" placeholder="e.g. 104" value="${isEdit ? esc(existing.room_number) : ""}" required></div>
+        <div class="field"><label>Room Type</label><input name="room_type" placeholder="e.g. Standard" value="${isEdit ? esc(existing.room_type) : ""}" required></div>
       </div>
-      <div class="field"><label>Rate per Night (GH₵)</label><input name="rate_per_night" inputmode="decimal" placeholder="e.g. 450" required></div>
+      <div class="field"><label>Rate per Night (GH₵)</label><input name="rate_per_night" inputmode="decimal" placeholder="e.g. 450" value="${isEdit ? existing.rate_per_night : ""}" required></div>
+      ${statusField}
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" data-close>Cancel</button>
-        <button type="submit" class="btn btn-primary" id="mRoomBtn">Add Room</button>
+        <button type="submit" class="btn btn-primary" id="mRoomBtn">${isEdit ? "Save Changes" : "Add Room"}</button>
       </div>
     </form>`);
   const form = $("#mRoomForm");
@@ -229,17 +321,19 @@ function openRoomModal() {
       room_type: form.room_type.value.trim(),
       rate_per_night: rate,
     };
+    if (isEdit) payload.status = form.status.value;
     if (!payload.room_number || !payload.room_type) { showAlert($("#mAlert"), "error", "Room number and type are required."); return; }
     if (!(rate > 0)) { showAlert($("#mAlert"), "error", "Enter a nightly rate greater than zero."); return; }
     const btn = $("#mRoomBtn");
-    setLoading(btn, true, "Adding...");
+    setLoading(btn, true, isEdit ? "Saving..." : "Adding...");
     try {
-      await http.post("/api/manager/rooms", payload);
+      if (isEdit) await http.patch(`/api/manager/rooms/${existing.room_id}`, payload);
+      else await http.post("/api/manager/rooms", payload);
       closeModal();
-      toast("Room added", "success");
+      toast(isEdit ? "Room updated" : "Room added", "success");
       await Promise.all([loadRooms(), loadAnalytics()]);
     } catch (err) {
-      showAlert($("#mAlert"), "error", err.status === 409 ? "That room number already exists." : err.message);
+      showAlert($("#mAlert"), "error", err.status === 409 ? err.message : err.message);
       setLoading(btn, false);
     }
   });

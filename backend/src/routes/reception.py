@@ -1,9 +1,10 @@
 from datetime import date, datetime, timezone
 
 from flask import Blueprint, request, jsonify
+from sqlalchemy import or_
 
 from ..extensions import db
-from ..models import Booking, Room, Payment
+from ..models import Booking, Room, Payment, Staff, Guest
 from ..middleware import role_required
 
 reception_bp = Blueprint("reception", __name__, url_prefix="/api/reception")
@@ -116,3 +117,64 @@ def assign_cleaning(room_id):
     room.assigned_staff = (data.get("assigned_staff") or "").strip() or None
     db.session.commit()
     return jsonify(message="Cleaning assigned", room=room.to_dict())
+
+
+@reception_bp.get("/housekeepers")
+@role_required(*FRONT_DESK)
+def housekeepers():
+    """Cleaners the desk can hand a room to when flagging it for cleaning."""
+    staff = (
+        Staff.query.filter_by(role="housekeeping")
+        .order_by(Staff.full_name)
+        .all()
+    )
+    return jsonify(
+        housekeepers=[{"staff_id": s.staff_id, "full_name": s.full_name} for s in staff]
+    )
+
+
+@reception_bp.get("/bookings")
+@role_required(*FRONT_DESK)
+def search_bookings():
+    """Look up ANY booking by reference or guest name (not just today's).
+
+    Empty query returns the most recent bookings so the desk has a starting list.
+    """
+    q = (request.args.get("q") or "").strip()
+    query = Booking.query.join(Guest)
+    if q:
+        like = f"%{q}%"
+        query = query.filter(
+            or_(Booking.reference.ilike(like), Guest.full_name.ilike(like))
+        )
+    rows = query.order_by(Booking.check_in_date.desc()).limit(50).all()
+    out = []
+    for b in rows:
+        d = b.to_dict()
+        d["guest_name"] = b.guest.full_name
+        d["guest_email"] = b.guest.email
+        d["room_number"] = b.room.room_number
+        d["room_type"] = b.room.room_type
+        out.append(d)
+    return jsonify(bookings=out)
+
+
+@reception_bp.get("/bookings/<int:booking_id>/invoice")
+@role_required(*FRONT_DESK)
+def invoice(booking_id):
+    """Read-only invoice data for a booking: guest, room, payments, balance.
+
+    The desk renders and prints this in the browser (print -> PDF); nothing is
+    stored, so it adds no new dependency or AWS service.
+    """
+    booking = db.get_or_404(Booking, booking_id)
+    paid = sum(float(p.amount) for p in booking.payments)
+    total = float(booking.cost_total)
+    return jsonify(
+        booking=booking.to_dict(),
+        guest=booking.guest.to_dict(),
+        room=booking.room.to_dict(),
+        payments=[p.to_dict() for p in booking.payments],
+        amount_paid=round(paid, 2),
+        balance_due=round(total - paid, 2),
+    )

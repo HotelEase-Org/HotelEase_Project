@@ -74,6 +74,7 @@ const STATUS_MAP = {
   Available:   { cls: "ok",   label: "Available"   },
   Occupied:    { cls: "busy", label: "Occupied"    },
   Cleaning:    { cls: "warn", label: "Cleaning"    },
+  InProgress:  { cls: "prog", label: "In Progress" },
   Maintenance: { cls: "crit", label: "Maintenance" },
   // booking
   Pending:     { cls: "warn", label: "Pending"     },

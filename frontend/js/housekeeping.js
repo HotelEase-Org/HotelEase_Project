@@ -32,6 +32,7 @@ async function load() {
 
 function renderKpis(rooms) {
   $("#kpiClean").textContent = rooms.filter((r) => r.status === "Cleaning").length;
+  $("#kpiProgress").textContent = rooms.filter((r) => r.status === "InProgress").length;
   $("#kpiMaint").textContent = rooms.filter((r) => r.status === "Maintenance").length;
   $("#kpiMine").textContent = rooms.filter((r) => r.assigned_to_me).length;
 }
@@ -45,11 +46,13 @@ function renderTasks(rooms) {
   body.innerHTML = rooms.map((r) => {
     let action;
     if (r.status === "Cleaning") {
+      action = `<button class="btn btn-primary btn-sm" data-action="start" data-id="${r.room_id}">Start Cleaning</button>`;
+    } else if (r.status === "InProgress") {
       action = `<button class="btn btn-primary btn-sm" data-action="clean" data-id="${r.room_id}">Mark Clean &#10003;</button>`;
     } else { // Maintenance
       action = `<button class="btn btn-ghost btn-sm" data-action="restore" data-id="${r.room_id}">Back in Service</button>`;
     }
-    const flag = r.status === "Cleaning"
+    const flag = (r.status === "Cleaning" || r.status === "InProgress")
       ? ` <button class="btn btn-danger btn-sm" data-action="maintenance" data-id="${r.room_id}">Flag Maintenance</button>`
       : "";
     const mine = r.assigned_to_me ? ` <span class="badge prog">Me</span>` : "";
@@ -64,8 +67,9 @@ function renderTasks(rooms) {
   }).join("");
 }
 
-const ACTION_STATUS = { clean: "Available", restore: "Available", maintenance: "Maintenance" };
+const ACTION_STATUS = { start: "InProgress", clean: "Available", restore: "Available", maintenance: "Maintenance" };
 const ACTION_TOAST = {
+  start: "Cleaning started",
   clean: "Room marked clean and available",
   restore: "Room back in service",
   maintenance: "Room flagged for maintenance",

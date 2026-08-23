@@ -17,7 +17,7 @@ def my_rooms():
     """Rooms that need attention, or are assigned to the logged-in cleaner."""
     staff = db.session.get(Staff, session["staff_id"])
     rooms = (
-        Room.query.filter(Room.status.in_(("Cleaning", "Maintenance")))
+        Room.query.filter(Room.status.in_(("Cleaning", "InProgress", "Maintenance")))
         .order_by(Room.room_number)
         .all()
     )
@@ -36,7 +36,7 @@ def my_rooms():
 def update_status(room_id):
     data = request.get_json(silent=True) or {}
     new_status = (data.get("status") or "").strip()
-    valid = {"Available", "Cleaning", "Occupied", "Maintenance"}
+    valid = {"Available", "Cleaning", "InProgress", "Occupied", "Maintenance"}
     if new_status not in valid:
         return jsonify(error=f"status must be one of {sorted(valid)}"), 400
 

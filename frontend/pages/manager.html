@@ -62,9 +62,9 @@
             <button class="btn btn-primary btn-sm" id="addStaffBtn">+ Add Staff</button>
           </div>
           <table>
-            <thead><tr><th>Name</th><th>Role</th><th>Username</th></tr></thead>
+            <thead><tr><th>Name</th><th>Role</th><th>Username</th><th>Actions</th></tr></thead>
             <tbody id="staffBody">
-              <tr><td colspan="3"><div class="loading-block"><span class="spinner"></span> Loading...</div></td></tr>
+              <tr><td colspan="4"><div class="loading-block"><span class="spinner"></span> Loading...</div></td></tr>
             </tbody>
           </table>
         </div>
@@ -83,6 +83,18 @@
           </table>
           <div class="tag-note" style="margin-top:12px;">Rooms and nightly rates you set here feed the guest booking form and revenue reports.</div>
         </div>
+      </div>
+
+      <!-- Per-room list (edit / delete) -->
+      <div class="card" style="margin-top:20px;">
+        <h2>Room List <span class="sub">edit or remove individual rooms</span></h2>
+        <table>
+          <thead><tr><th>Room</th><th>Type</th><th>Rate / night</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="roomListBody">
+            <tr><td colspan="5"><div class="loading-block"><span class="spinner"></span> Loading...</div></td></tr>
+          </tbody>
+        </table>
+        <div class="tag-note" style="margin-top:12px;">Rooms tied to existing bookings cannot be deleted -- set them to Maintenance instead.</div>
       </div>
     </div>
   </main>
