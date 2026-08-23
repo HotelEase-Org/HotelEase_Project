@@ -14,6 +14,9 @@ class Booking(db.Model):
     booking_status = db.Column(db.String(20), nullable=False, default="Pending")
     payment_status = db.Column(db.String(20), nullable=False, default="Unpaid")
     cost_total = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    # S3 object key of the guest's uploaded ID document (never a public URL).
+    # The file lives in the private S3 bucket; only the key is stored here.
+    id_document_key = db.Column(db.String(255), nullable=True)
 
     guest = db.relationship("Guest", back_populates="bookings")
     room = db.relationship("Room", back_populates="bookings")
@@ -32,4 +35,6 @@ class Booking(db.Model):
             "booking_status": self.booking_status,
             "payment_status": self.payment_status,
             "cost_total": float(self.cost_total),
+            # Boolean, not the raw key: never leak internal S3 keys to clients.
+            "has_id_document": self.id_document_key is not None,
         }
