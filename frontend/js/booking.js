@@ -88,33 +88,59 @@ checkOutEl.addEventListener("change", refreshAvailability);
 roomSelect.addEventListener("change", updateCostHint);
 
 /* --- submit a booking ---------------------------------------------------- */
+const idDocument = $("#idDocument");
+const ID_TYPES = ["image/jpeg", "image/png", "application/pdf"];
+const ID_MAX_BYTES = 5 * 1024 * 1024; // 5 MB -- must match the backend limit
+
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   clearAlert(bookingAlert);
 
-  const payload = {
+  const fields = {
     full_name: form.full_name.value.trim(),
     email: form.email.value.trim(),
     phone_number: form.phone_number.value.trim(),
     id_number: form.id_number.value.trim(),
-    room_id: Number(roomSelect.value),
+    room_id: roomSelect.value,
     check_in_date: checkInEl.value,
     check_out_date: checkOutEl.value,
   };
 
-  if (!payload.full_name || !payload.email || !payload.phone_number) {
+  if (!fields.full_name || !fields.email || !fields.phone_number) {
     showAlert(bookingAlert, "error", "Please fill in your name, email and phone number.");
     return;
   }
-  if (!payload.room_id) {
+  if (!fields.room_id) {
     showAlert(bookingAlert, "error", "Please choose your dates and pick an available room.");
     return;
   }
 
+  // Validate the ID file in the browser first, so the guest gets an instant
+  // message instead of waiting for the server to reject it. The backend
+  // re-checks the same rules -- this is only for a nicer experience.
+  const idFile = idDocument.files[0];
+  if (!idFile) {
+    showAlert(bookingAlert, "error", "Please attach a photo or PDF of your ID.");
+    return;
+  }
+  if (!ID_TYPES.includes(idFile.type)) {
+    showAlert(bookingAlert, "error", "Your ID must be a JPG, PNG, or PDF file.");
+    return;
+  }
+  if (idFile.size > ID_MAX_BYTES) {
+    showAlert(bookingAlert, "error", "Your ID file must be 5 MB or smaller.");
+    return;
+  }
+
+  // Send as multipart/form-data so the file rides along with the booking.
+  const payload = new FormData();
+  for (const [key, value] of Object.entries(fields)) payload.append(key, value);
+  payload.append("id_document", idFile);
+
   const opt = roomSelect.selectedOptions[0];
   setLoading(submitBtn, true, "Submitting...");
   try {
-    const res = await http.post("/api/bookings", payload);
+    const res = await http.postForm("/api/bookings", payload);
     showConfirmation(res, opt);
     form.reset();
     checkInEl.min = todayISO();
