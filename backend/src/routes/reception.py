@@ -1,4 +1,5 @@
 from datetime import date, datetime, timezone
+import math
 
 from flask import Blueprint, request, jsonify, session
 from sqlalchemy import or_
@@ -82,9 +83,13 @@ def record_payment():
 
     # Reject non-numeric or non-positive amounts: a payment must add value, so
     # zero and negatives (which would fake an unauthorised refund) are refused.
+    # NaN/Infinity must be caught explicitly -- float("nan") <= 0 is False, so it
+    # would otherwise slip past the check and poison every revenue total.
     try:
         amount = round(float(amount), 2)
     except (TypeError, ValueError):
+        return jsonify(error="Amount must be a number"), 400
+    if not math.isfinite(amount):
         return jsonify(error="Amount must be a number"), 400
     if amount <= 0:
         return jsonify(error="Amount must be greater than zero"), 400

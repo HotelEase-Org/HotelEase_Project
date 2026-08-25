@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import datetime, timezone
+import math
 
 from flask import Blueprint, request, jsonify, session
 
@@ -8,6 +9,22 @@ from ..models import Room, Booking, Payment, Staff, DeletionRequest
 from ..middleware import role_required
 
 manager_bp = Blueprint("manager", __name__, url_prefix="/api/manager")
+
+
+def _validate_rate(value):
+    """Validate a nightly rate. Returns (rate, error) -- error is None on success.
+
+    Shared by add_room and update_room so both reject the same bad input: a
+    non-numeric value, a non-finite value (NaN/Infinity), or anything <= 0. A
+    negative rate would otherwise flow straight into a booking's cost_total.
+    """
+    try:
+        rate = float(value)
+    except (TypeError, ValueError):
+        return None, "rate_per_night must be a number"
+    if not math.isfinite(rate) or rate <= 0:
+        return None, "rate_per_night must be greater than zero"
+    return rate, None
 
 
 @manager_bp.get("/analytics")
@@ -140,10 +157,14 @@ def add_room():
     if Room.query.filter_by(room_number=str(data["room_number"]).strip()).first():
         return jsonify(error="Room number already exists"), 409
 
+    rate, err = _validate_rate(data["rate_per_night"])
+    if err:
+        return jsonify(error=err), 400
+
     room = Room(
         room_number=str(data["room_number"]).strip(),
-        room_type=data["room_type"].strip(),
-        rate_per_night=data["rate_per_night"],
+        room_type=str(data["room_type"]).strip(),
+        rate_per_night=rate,
         status="Available",
     )
     db.session.add(room)
@@ -167,12 +188,9 @@ def update_room(room_id):
     if data.get("room_type"):
         room.room_type = data["room_type"].strip()
     if data.get("rate_per_night") is not None:
-        try:
-            rate = float(data["rate_per_night"])
-        except (TypeError, ValueError):
-            return jsonify(error="rate_per_night must be a number"), 400
-        if rate <= 0:
-            return jsonify(error="rate_per_night must be greater than zero"), 400
+        rate, err = _validate_rate(data["rate_per_night"])
+        if err:
+            return jsonify(error=err), 400
         room.rate_per_night = rate
     if data.get("status"):
         valid = {"Available", "Cleaning", "InProgress", "Occupied", "Maintenance"}

@@ -1,9 +1,17 @@
 from flask import Blueprint, request, jsonify, session
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..extensions import db, limiter
 from ..models import Staff
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
+
+# Precomputed once at import: a throwaway hash we verify against when the
+# username is unknown. Hashing is deliberately expensive (scrypt), so skipping it
+# for a missing account would make "no such user" return measurably faster than
+# "wrong password" and leak which usernames exist. Doing the same work on both
+# paths closes that timing side-channel.
+_DUMMY_PASSWORD_HASH = generate_password_hash("timing-equaliser-not-a-real-password")
 
 
 @auth_bp.post("/login")
@@ -14,7 +22,11 @@ def login():
     password = data.get("password") or ""
 
     staff = Staff.query.filter_by(username=username).first()
-    if staff is None or not staff.check_password(password):
+    if staff is None:
+        # Equalise timing with the real check_password path below.
+        check_password_hash(_DUMMY_PASSWORD_HASH, password)
+        return jsonify(error="Invalid username or password"), 401
+    if not staff.check_password(password):
         return jsonify(error="Invalid username or password"), 401
 
     session.clear()
