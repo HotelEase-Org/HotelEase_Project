@@ -24,6 +24,16 @@ ALLOWED_TYPES = {
 MAX_BYTES = 5 * 1024 * 1024  # 5 MB
 
 
+# Magic-byte signatures, so we validate the real file content instead of
+# trusting the client-supplied MIME type. Each allowed type must start with
+# one of these byte prefixes.
+MAGIC = {
+    "image/jpeg": (b"\xff\xd8\xff",),
+    "image/png": (b"\x89PNG\r\n\x1a\n",),
+    "application/pdf": (b"%PDF-",),
+}
+
+
 class UploadError(ValueError):
     """Raised when an uploaded file is missing or fails validation."""
 
@@ -57,6 +67,13 @@ def upload_id_document(file_storage):
         raise UploadError("The uploaded file is empty.")
     if size > MAX_BYTES:
         raise UploadError("ID document must be 5 MB or smaller.")
+
+    # Sniff the leading bytes and confirm they match the declared type, so a
+    # renamed executable or spoofed Content-Type can't slip through.
+    header = stream.read(8)
+    stream.seek(0)
+    if not any(header.startswith(sig) for sig in MAGIC[content_type]):
+        raise UploadError("The file content does not match a JPG, PNG, or PDF.")
 
     bucket = current_app.config.get("S3_BUCKET", "hotelease-uploads")
     key = f"guest-ids/{uuid.uuid4().hex}{ext}"

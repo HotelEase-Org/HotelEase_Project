@@ -1,10 +1,10 @@
 from datetime import date, datetime, timezone
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from sqlalchemy import or_
 
 from ..extensions import db
-from ..models import Booking, Room, Payment, Staff, Guest
+from ..models import Booking, Room, Payment, Staff, Guest, DeletionRequest
 from ..middleware import role_required
 
 reception_bp = Blueprint("reception", __name__, url_prefix="/api/reception")
@@ -178,3 +178,54 @@ def invoice(booking_id):
         amount_paid=round(paid, 2),
         balance_due=round(total - paid, 2),
     )
+
+
+# --- deletion requests (receptionist raises; a manager must approve) --------
+@reception_bp.post("/bookings/<int:booking_id>/deletion-request")
+@role_required(*FRONT_DESK)
+def request_deletion(booking_id):
+    """Ask a manager to delete a booking. Does NOT delete anything itself --
+    it records a Pending request that a manager reviews and approves/rejects."""
+    data = request.get_json(silent=True) or {}
+    reason = (data.get("reason") or "").strip()
+    if len(reason) < 5:
+        return jsonify(error="Please give a reason (at least 5 characters) for the deletion."), 400
+
+    booking = db.get_or_404(Booking, booking_id)
+
+    # One pending request per booking -- don't let the queue fill with duplicates.
+    existing = DeletionRequest.query.filter_by(
+        booking_id=booking.booking_id, status="Pending"
+    ).first()
+    if existing:
+        return jsonify(error="A deletion request for this booking is already awaiting manager review."), 409
+
+    staff = db.session.get(Staff, session.get("staff_id"))
+    req = DeletionRequest(
+        booking_id=booking.booking_id,
+        booking_reference=booking.reference,
+        guest_name=booking.guest.full_name,
+        room_number=booking.room.room_number,
+        reason=reason,
+        requested_by=staff.staff_id if staff else None,
+        requested_by_name=staff.full_name if staff else "Unknown",
+    )
+    db.session.add(req)
+    db.session.commit()
+    return jsonify(
+        message="Deletion request submitted for manager approval",
+        deletion_request=req.to_dict(),
+    ), 201
+
+
+@reception_bp.get("/deletion-requests")
+@role_required(*FRONT_DESK)
+def list_deletion_requests():
+    """The desk's view of deletion requests, so a receptionist can see whether
+    theirs was approved or rejected. Optional ?status=Pending filter."""
+    status = (request.args.get("status") or "").strip()
+    query = DeletionRequest.query
+    if status:
+        query = query.filter_by(status=status)
+    rows = query.order_by(DeletionRequest.created_at.desc()).limit(50).all()
+    return jsonify(deletion_requests=[r.to_dict() for r in rows])

@@ -110,6 +110,11 @@ form.addEventListener("submit", async (e) => {
     showAlert(bookingAlert, "error", "Please fill in your name, email and phone number.");
     return;
   }
+  if (!isValidEmail(fields.email)) {
+    showAlert(bookingAlert, "error", "Please enter a valid email address -- we use it to confirm your booking.");
+    form.email.focus();
+    return;
+  }
   if (!fields.room_id) {
     showAlert(bookingAlert, "error", "Please choose your dates and pick an available room.");
     return;
@@ -164,6 +169,19 @@ function showConfirmation(res, opt) {
   const num = opt ? opt.dataset.number : "";
   $("#confirmMeta").textContent =
     `Room ${num} · ${type} · ${fmtDate(b.check_in_date)} to ${fmtDate(b.check_out_date)} · ${money(b.cost_total)}`;
+  const copyBtn = $("#copyRefBtn");
+  if (copyBtn) {
+    copyBtn.textContent = "Copy reference";
+    copyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(res.reference);
+        copyBtn.textContent = "Copied ✓";
+        toast("Reference copied to clipboard", "success");
+      } catch (_) {
+        toast("Copy failed -- please note the reference down.", "error");
+      }
+    };
+  }
   $("#confirmCard").classList.remove("hidden");
   $("#confirmCard").scrollIntoView({ behavior: "smooth", block: "nearest" });
   toast("Booking confirmed -- reference " + res.reference, "success");
@@ -184,6 +202,10 @@ lookupForm.addEventListener("submit", async (e) => {
   const email = lookupForm.email.value.trim();
   if (!reference || !email) {
     showAlert(lookupAlert, "error", "Enter both your reference and the email you booked with.");
+    return;
+  }
+  if (!isValidEmail(email)) {
+    showAlert(lookupAlert, "error", "That email address does not look right. Check for typos.");
     return;
   }
 

@@ -11,6 +11,9 @@ class TestConfig:
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     CORS_ORIGINS = "*"
+    # The limiter is a shared singleton; disable it in tests so counts don't
+    # carry across the many logins the suite performs and trip a false 429.
+    RATELIMIT_ENABLED = False
 
 
 @pytest.fixture

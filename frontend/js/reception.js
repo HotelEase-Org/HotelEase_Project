@@ -5,6 +5,7 @@
 const ROLE_LABEL = { manager: "Manager", receptionist: "Receptionist", housekeeping: "Housekeeping" };
 
 let bookingsCache = [];   // today's arrivals/departures, for search + payment prefill
+let allBookingsCache = []; // every booking record (past / present / future)
 
 (async function init() {
   const user = await requireRole(["receptionist", "manager"]);
@@ -18,6 +19,7 @@ let bookingsCache = [];   // today's arrivals/departures, for search + payment p
   wireDeskSearch();
   wireTableActions();
   wireRoomActions();
+  wireAllBookingsActions();
 
   await loadAll();
 })();
@@ -41,6 +43,8 @@ async function loadAll() {
   } catch (err) {
     showAlert($("#pageAlert"), "error", err.message);
   }
+  loadDeletionRequests();
+  loadAllBookings();
 }
 
 function renderKpis(dash, rooms) {
@@ -73,6 +77,7 @@ function renderArrivals(bookings) {
       actions.push(`<button class="btn btn-ghost btn-sm" data-action="pay" data-id="${b.booking_id}">Record Pay</button>`);
     }
     actions.push(`<button class="btn btn-ghost btn-sm" data-action="invoice" data-id="${b.booking_id}">Invoice</button>`);
+    actions.push(`<button class="btn btn-danger btn-sm" data-action="reqdelete" data-id="${b.booking_id}">Delete</button>`);
     return `<tr>
       <td class="tab">${esc(b.reference)}</td>
       <td>${esc(b.guest_name)}</td>
@@ -92,6 +97,21 @@ function wireTableActions() {
 
     if (action === "pay") { prefillPayment(id); return; }
     if (action === "invoice") { openInvoice(id); return; }
+    if (action === "reqdelete") { openDeletionModal(id); return; }
+
+    const b = bookingsCache.find((x) => String(x.booking_id) === String(id));
+    const who = b ? `${b.guest_name} (${b.reference})` : "this guest";
+
+    if (action === "checkin") {
+      if (!confirm(`Check in ${who}?`)) return;
+    } else if (action === "checkout") {
+      // Guard against checking out with money still owed (2.2 / 2.3).
+      const owes = b && b.payment_status !== "Paid";
+      const msg = owes
+        ? `${who} still has an outstanding balance (payment is ${b.payment_status}).\n\nCheck out anyway? Record the payment first if it has been settled.`
+        : `Check out ${who}? The room will be sent to housekeeping.`;
+      if (!confirm(msg)) return;
+    }
 
     setLoading(btn, true, "...");
     try {
@@ -128,7 +148,7 @@ function wirePaymentForm() {
     e.preventDefault();
     clearAlert($("#payAlert"));
     const bookingId = $("#payBookingId").value;
-    const amount = parseFloat($("#payAmount").value);
+    const amount = parseMoney($("#payAmount").value);
     const method = $("#payMethod").value;
     if (!bookingId) { showAlert($("#payAlert"), "error", "Pick a booking with \"Record Pay\" first."); return; }
     if (!(amount > 0)) { showAlert($("#payAlert"), "error", "Enter an amount greater than zero."); return; }
@@ -175,6 +195,7 @@ function wireDeskSearch() {
             </div>
             <div style="margin-top:8px;">
               <button class="btn btn-ghost btn-sm" data-action="invoice" data-id="${b.booking_id}">Invoice</button>
+              <button class="btn btn-danger btn-sm" data-action="reqdelete" data-id="${b.booking_id}">Delete</button>
             </div>
           </div>`).join("");
       }
@@ -189,8 +210,10 @@ function wireDeskSearch() {
   $("#deskSearchBtn").addEventListener("click", run);
   $("#deskSearch").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); run(); } });
   box.addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-action='invoice']");
-    if (btn) openInvoice(btn.dataset.id);
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    if (btn.dataset.action === "invoice") openInvoice(btn.dataset.id);
+    else if (btn.dataset.action === "reqdelete") openDeletionModal(btn.dataset.id);
   });
 }
 
@@ -304,4 +327,141 @@ async function openInvoice(bookingId) {
     <div class="noprint" style="margin-top:16px;"><button onclick="window.print()">Print / Save as PDF</button></div>
   </body></html>`);
   w.document.close();
+}
+
+/* --- request a booking deletion (needs manager approval) ----------------- */
+function openDeletionModal(bookingId) {
+  const b = bookingsCache.find((x) => String(x.booking_id) === String(bookingId));
+  const who = b ? `${esc(b.reference)} · ${esc(b.guest_name)}` : `booking #${esc(bookingId)}`;
+  openModal(`
+    <h2>Request Booking Deletion</h2>
+    <p class="muted mt0">${who}</p>
+    <div id="delAlert" class="alert hidden"></div>
+    <div class="field">
+      <label for="delReason">Reason for deletion</label>
+      <textarea id="delReason" rows="3" placeholder="e.g. Duplicate booking created in error / guest cancelled by phone"></textarea>
+      <div class="hint">A manager reviews this. The booking stays until the request is approved.</div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+      <button type="button" class="btn btn-danger" id="delConfirm">Submit for Approval</button>
+    </div>`);
+  $(".modal [data-close]").addEventListener("click", closeModal);
+  $("#delConfirm").addEventListener("click", async () => {
+    const reason = $("#delReason").value.trim();
+    if (reason.length < 5) {
+      showAlert($("#delAlert"), "error", "Please give a reason (at least 5 characters).");
+      return;
+    }
+    const btn = $("#delConfirm");
+    setLoading(btn, true, "Submitting...");
+    try {
+      await http.post(`/api/reception/bookings/${bookingId}/deletion-request`, { reason });
+      closeModal();
+      toast("Deletion request sent to a manager for approval", "success");
+      loadDeletionRequests();
+    } catch (err) {
+      showAlert($("#delAlert"), "error", err.message);
+      setLoading(btn, false);
+    }
+  });
+}
+
+async function loadDeletionRequests() {
+  const body = $("#deletionsBody");
+  if (!body) return;
+  try {
+    const { deletion_requests: rows } = await http.get("/api/reception/deletion-requests");
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="5"><div class="empty">No deletion requests yet.</div></td></tr>`;
+      return;
+    }
+    body.innerHTML = rows.map((d) => {
+      const note = d.review_note
+        ? `<div class="muted" style="font-size:.8rem;">${esc(d.reviewed_by_name || "Manager")}: ${esc(d.review_note)}</div>`
+        : "";
+      return `<tr>
+        <td class="tab">${esc(d.booking_reference)}</td>
+        <td>${esc(d.guest_name)}</td>
+        <td>${esc(d.room_number)}</td>
+        <td style="max-width:280px;">${esc(d.reason)}${note}</td>
+        <td>${badge(d.status)}</td>
+      </tr>`;
+    }).join("");
+  } catch (err) {
+    body.innerHTML = `<tr><td colspan="5"><div class="empty">${esc(err.message)}</div></td></tr>`;
+  }
+}
+
+/* --- all booking records (past / present / future) ----------------------- */
+/* Classify a stay against today so the desk can tell records apart at a glance. */
+function stayPeriod(b) {
+  const today = todayISO();
+  if (b.check_out_date < today) return { label: "Past", cls: "muted" };
+  if (b.check_in_date > today) return { label: "Upcoming", cls: "prog" };
+  return { label: "Current", cls: "busy" };
+}
+
+function renderAllBookings(rows) {
+  const body = $("#allBookingsBody");
+  if (!body) return;
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="7"><div class="empty">No booking records found.</div></td></tr>`;
+    return;
+  }
+  body.innerHTML = rows.map((b) => {
+    const p = stayPeriod(b);
+    return `<tr>
+      <td class="tab">${esc(b.reference)}</td>
+      <td>${esc(b.guest_name)}</td>
+      <td>${esc(b.room_number)}</td>
+      <td class="muted" style="font-size:.85rem;">
+        ${fmtDate(b.check_in_date)} to ${fmtDate(b.check_out_date)}
+        <span class="badge ${p.cls}" style="margin-left:4px;">${p.label}</span>
+      </td>
+      <td>${badge(b.booking_status)}</td>
+      <td>${badge(b.payment_status)}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" data-action="invoice" data-id="${b.booking_id}">Invoice</button>
+        <button class="btn btn-danger btn-sm" data-action="reqdelete" data-id="${b.booking_id}">Delete</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+async function loadAllBookings() {
+  const body = $("#allBookingsBody");
+  if (!body) return;
+  try {
+    const { bookings } = await http.get("/api/reception/bookings");
+    allBookingsCache = bookings;
+    applyAllBookingsFilter();
+  } catch (err) {
+    body.innerHTML = `<tr><td colspan="7"><div class="empty">${esc(err.message)}</div></td></tr>`;
+  }
+}
+
+/* Client-side filter over the loaded records (reference or guest name). */
+function applyAllBookingsFilter() {
+  const q = ($("#allSearch")?.value || "").trim().toLowerCase();
+  const rows = q
+    ? allBookingsCache.filter((b) =>
+        (b.reference || "").toLowerCase().includes(q) ||
+        (b.guest_name || "").toLowerCase().includes(q))
+    : allBookingsCache;
+  renderAllBookings(rows);
+}
+
+function wireAllBookingsActions() {
+  const input = $("#allSearch");
+  if (input) input.addEventListener("input", applyAllBookingsFilter);
+
+  const body = $("#allBookingsBody");
+  if (!body) return;
+  body.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    if (btn.dataset.action === "invoice") openInvoice(btn.dataset.id);
+    else if (btn.dataset.action === "reqdelete") openDeletionModal(btn.dataset.id);
+  });
 }
