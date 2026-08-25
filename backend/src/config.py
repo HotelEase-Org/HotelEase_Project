@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from pathlib import Path
 
 # backend/ -- one level up from src/
@@ -59,6 +60,11 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = _truthy(os.environ.get("SESSION_COOKIE_SECURE", ""))
+    # Idle logout: sessions are marked permanent at login, so this window bounds
+    # how long an abandoned front-desk terminal stays signed in. Flask refreshes
+    # the countdown on each request, making it an inactivity timeout, not a hard
+    # cap on a working session.
+    PERMANENT_SESSION_LIFETIME = timedelta(minutes=30)
 
     # --- S3 object storage (guest ID-document uploads) ---------------------
     # Bucket is private; the EC2 instance role grants s3:PutObject, so no keys

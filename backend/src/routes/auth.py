@@ -18,6 +18,7 @@ def login():
         return jsonify(error="Invalid username or password"), 401
 
     session.clear()
+    session.permanent = True  # opt into PERMANENT_SESSION_LIFETIME (idle timeout)
     session["staff_id"] = staff.staff_id
     session["role"] = staff.role
     return jsonify(message="Logged in", user=staff.to_dict())

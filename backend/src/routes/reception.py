@@ -80,6 +80,15 @@ def record_payment():
     if not booking_id or amount is None or not method:
         return jsonify(error="booking_id, amount and payment_method are required"), 400
 
+    # Reject non-numeric or non-positive amounts: a payment must add value, so
+    # zero and negatives (which would fake an unauthorised refund) are refused.
+    try:
+        amount = round(float(amount), 2)
+    except (TypeError, ValueError):
+        return jsonify(error="Amount must be a number"), 400
+    if amount <= 0:
+        return jsonify(error="Amount must be greater than zero"), 400
+
     booking = db.get_or_404(Booking, booking_id)
     payment = Payment(
         booking_id=booking.booking_id,
@@ -90,7 +99,7 @@ def record_payment():
     db.session.add(payment)
 
     # Mark paid once total payments cover the booking cost.
-    paid = sum(float(p.amount) for p in booking.payments) + float(amount)
+    paid = sum(float(p.amount) for p in booking.payments) + amount
     booking.payment_status = "Paid" if paid >= float(booking.cost_total) else "Partial"
     db.session.commit()
 
