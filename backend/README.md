@@ -34,11 +34,16 @@ python -m pytest -q               # 9 tests, all should pass
 
 ## 3. Demo accounts (created by seed.py)
 
-| Role         | Username       | Password       |
-|--------------|----------------|----------------|
-| Manager      | `manager`      | `manager123`   |
-| Receptionist | `reception`    | `reception123` |
-| Housekeeping | `housekeeping` | `cleaning123`  |
+`seed.py` creates one account per role. It prints each account's password once
+when you run it -- set `SEED_MANAGER_PASSWORD`, `SEED_RECEPTION_PASSWORD`, and
+`SEED_HOUSEKEEPING_PASSWORD` to choose your own, otherwise a random password is
+generated. Passwords are deliberately not committed to the repo.
+
+| Role         | Username       |
+|--------------|----------------|
+| Manager      | `manager`      |
+| Receptionist | `reception`    |
+| Housekeeping | `housekeeping` |
 
 `seed.py` also prints a demo booking reference (for testing the guest lookup).
 

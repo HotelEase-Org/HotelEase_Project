@@ -70,6 +70,10 @@ web_modules/
 .env.*
 !.env.example
 
+# Secrets, keys, and private notes -- never commit these
+*.pem
+deliverables/Cloud_setup.md
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

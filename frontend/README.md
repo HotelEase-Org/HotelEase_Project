@@ -58,11 +58,14 @@ Open **http://localhost:8080/** in your browser.
 
 ### Demo accounts
 
-| Role         | Username       | Password       |
-|--------------|----------------|----------------|
-| Manager      | `manager`      | `manager123`   |
-| Receptionist | `reception`    | `reception123` |
-| Housekeeping | `housekeeping` | `cleaning123`  |
+`seed.py` creates one account per role and prints each password once at seed time
+(passwords are not committed to the repo).
+
+| Role         | Username       |
+|--------------|----------------|
+| Manager      | `manager`      |
+| Receptionist | `reception`    |
+| Housekeeping | `housekeeping` |
 
 ## How it connects to the API
 
