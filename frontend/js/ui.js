@@ -4,7 +4,6 @@
 
 /* Tiny DOM helpers -------------------------------------------------------- */
 const $  = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
 /** Escape user/content strings before putting them in innerHTML. */
 function esc(value) {
@@ -44,13 +43,6 @@ function money(amount) {
     maximumFractionDigits: 2,
   });
   return "GH₵ " + str;
-}
-
-/** Compact money for KPI tiles: 48200 -> "GH₵ 48.2k". */
-function moneyShort(amount) {
-  const n = Number(amount) || 0;
-  if (Math.abs(n) >= 1000) return "GH₵ " + (n / 1000).toFixed(1).replace(/\.0$/, "") + "k";
-  return money(n);
 }
 
 /** "2026-08-25" or ISO datetime -> "25 Aug 2026". Timezone-safe for date-only. */
