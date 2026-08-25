@@ -161,7 +161,7 @@ function openStaffModal(existing) {
       <div class="field"><label>Role</label><select name="role">${roleOpts}</select></div>
       <div class="form-row">
         <div class="field"><label>Username</label><input name="username" autocomplete="off" value="${isEdit ? esc(existing.username) : ""}" ${isEdit ? "disabled" : "required"}></div>
-        <div class="field"><label>Password ${isEdit ? '<span class="muted">(blank = keep)</span>' : ""}</label><input name="password" type="text" autocomplete="off" ${isEdit ? "" : "required"}></div>
+        <div class="field"><label>Password ${isEdit ? '<span class="muted">(blank = keep)</span>' : ""}</label><input name="password" type="password" autocomplete="new-password" minlength="8" ${isEdit ? "" : "required"}></div>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" data-close>Cancel</button>

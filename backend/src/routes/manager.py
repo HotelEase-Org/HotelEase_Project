@@ -59,6 +59,8 @@ def create_staff():
         return jsonify(error=f"Missing fields: {', '.join(missing)}"), 400
     if data["role"] not in ("receptionist", "housekeeping", "manager"):
         return jsonify(error="Invalid role"), 400
+    if len(data["password"]) < 8:
+        return jsonify(error="Password must be at least 8 characters."), 400
     if Staff.query.filter_by(username=data["username"].strip()).first():
         return jsonify(error="Username already exists"), 409
 
@@ -97,6 +99,8 @@ def update_staff(staff_id):
     if data.get("full_name"):
         staff.full_name = data["full_name"].strip()
     if data.get("password"):
+        if len(data["password"]) < 8:
+            return jsonify(error="Password must be at least 8 characters."), 400
         staff.set_password(data["password"])
 
     db.session.commit()

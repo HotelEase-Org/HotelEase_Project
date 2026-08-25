@@ -2,7 +2,7 @@ from datetime import date
 
 from flask import Blueprint, request, jsonify
 
-from ..extensions import db
+from ..extensions import db, limiter
 from ..models import Guest, Room, Booking
 from ..services.storage import upload_id_document, UploadError
 from ..controllers.availability import (
@@ -48,6 +48,7 @@ def available_rooms():
 
 
 @guest_bp.post("/bookings")
+@limiter.limit("5 per hour; 20 per day")
 def create_booking():
     """Public booking request. Accepts JSON or multipart/form-data.
 
@@ -83,6 +84,8 @@ def create_booking():
         return jsonify(error="Dates must be in YYYY-MM-DD format"), 400
     if check_out <= check_in:
         return jsonify(error="check_out must be after check_in"), 400
+    if check_in < date.today():
+        return jsonify(error="Check-in date cannot be in the past"), 400
 
     room = db.session.get(Room, room_id)
     if room is None:

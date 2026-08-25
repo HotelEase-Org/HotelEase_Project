@@ -147,7 +147,7 @@ def test_manager_cannot_delete_last_manager(client):
     # Add a second manager so we are allowed to delete the seeded one.
     client.post("/api/manager/staff", json={
         "full_name": "Mgr Two", "role": "manager",
-        "username": "mgr2", "password": "pw"})
+        "username": "mgr2", "password": "manager-two-pw"})
     # Deleting the seeded manager (id 1) is blocked only because it is self;
     # instead demote-delete path: delete the new manager, then the only-manager
     # guard blocks removing the last one.
@@ -198,3 +198,37 @@ def test_manager_delete_room_allowed_when_unbooked(client):
         "room_number": "999", "room_type": "Standard",
         "rate_per_night": 300}).get_json()["room"]["room_id"]
     assert client.delete(f"/api/manager/rooms/{new_id}").status_code == 200
+
+
+# --- security hardening: server-side validation -----------------------------
+def test_booking_rejects_past_dates(client):
+    # Frontend sets a min date, but the server must reject past check-ins too.
+    r = _make_booking(client, check_in_date="2020-01-01",
+                      check_out_date="2020-01-03")
+    assert r.status_code == 400
+    assert "past" in r.get_json()["error"].lower()
+
+
+def test_payment_rejects_non_positive_amount(client):
+    bid = _make_booking(client).get_json()["booking"]["booking_id"]
+    login(client, "reception")
+    for bad in (0, -50):
+        r = client.post("/api/reception/payments",
+                        json={"booking_id": bid, "amount": bad,
+                              "payment_method": "Cash"})
+        assert r.status_code == 400
+    # A valid positive amount still records fine.
+    ok = client.post("/api/reception/payments",
+                     json={"booking_id": bid, "amount": 100,
+                           "payment_method": "Cash"})
+    assert ok.status_code == 201
+
+
+def test_create_staff_rejects_short_password(client):
+    login(client, "manager")
+    r = client.post("/api/manager/staff", json={
+        "full_name": "Weak Pw", "role": "receptionist",
+        "username": "weakpw", "password": "short"})
+    assert r.status_code == 400
+    assert "8 characters" in r.get_json()["error"]
+

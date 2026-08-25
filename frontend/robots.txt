@@ -1,0 +1,4 @@
+# HotelEase -- keep staff dashboards and the API out of search indexes.
+User-agent: *
+Disallow: /pages/
+Disallow: /api/
