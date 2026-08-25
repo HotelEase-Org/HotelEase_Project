@@ -373,7 +373,7 @@ function wireRoomListActions() {
         toast("Room deleted", "success");
         await Promise.all([loadRooms(), loadAnalytics()]);
       } catch (err) {
-        toast(err.status === 409 ? err.message : err.message, "error");
+        toast(err.message, "error");
       }
     }
   });
@@ -458,7 +458,7 @@ function openRoomModal(existing) {
       toast(isEdit ? "Room updated" : "Room added", "success");
       await Promise.all([loadRooms(), loadAnalytics()]);
     } catch (err) {
-      showAlert($("#mAlert"), "error", err.status === 409 ? err.message : err.message);
+      showAlert($("#mAlert"), "error", err.message);
       setLoading(btn, false);
     }
   });

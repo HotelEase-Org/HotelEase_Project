@@ -2,9 +2,6 @@
 
 .hidden { display: none !important; }
 
-/* topbar auth area (guest pages) */
-.topbar .auth-area { display: flex; align-items: center; gap: 10px; margin-left: 8px; }
-
 /* inline alerts (form feedback, page errors) */
 .alert {
   border: 1px solid var(--border);
@@ -63,10 +60,6 @@ td .empty { padding: 14px; }
 }
 .modal h2 { font-family: var(--font-display); font-weight: 600; margin: 0 0 16px; font-size: 1.32rem; letter-spacing: -.01em; }
 .modal .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
-
-/* field-level error text */
-.field .error-text { color: var(--crit); font-size: .78rem; margin-top: 4px; }
-.field.invalid input, .field.invalid select { border-color: var(--crit); box-shadow: 0 0 0 3px rgba(185,28,28,.12); }
 
 /* reference box (booking confirmation) */
 .ref-box {
