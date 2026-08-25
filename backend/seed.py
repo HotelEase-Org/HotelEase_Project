@@ -3,6 +3,8 @@
 Usage (from backend/, with venv active):
     python seed.py
 """
+import os
+import secrets
 from datetime import date, datetime, timedelta, timezone
 
 from src import create_app
@@ -12,10 +14,24 @@ from src.controllers.availability import generate_reference
 
 app = create_app()
 
+
+def _seed_password(env_var):
+    """Password for a seeded staff account.
+
+    Read from an environment variable if set, otherwise generate a random one.
+    We never hardcode a usable password here: seed.py is committed to a public
+    repo, so a literal like "manager123" would BE the live admin credentials the
+    moment the database is seeded. Set SEED_MANAGER_PASSWORD / SEED_RECEPTION_PASSWORD
+    / SEED_HOUSEKEEPING_PASSWORD to choose your own, or use the random values
+    printed at the end of the run.
+    """
+    return os.environ.get(env_var) or secrets.token_urlsafe(12)
+
+
 STAFF = [
-    ("Abena Osei", "manager", "manager", "manager123"),
-    ("Kofi Mensah", "receptionist", "reception", "reception123"),
-    ("Kwame Asante", "housekeeping", "housekeeping", "cleaning123"),
+    ("Abena Osei", "manager", "manager", _seed_password("SEED_MANAGER_PASSWORD")),
+    ("Kofi Mensah", "receptionist", "reception", _seed_password("SEED_RECEPTION_PASSWORD")),
+    ("Kwame Asante", "housekeeping", "housekeeping", _seed_password("SEED_HOUSEKEEPING_PASSWORD")),
 ]
 
 ROOMS = [
