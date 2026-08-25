@@ -7,7 +7,7 @@ from flask import Flask, jsonify  # noqa: E402
 from flask_cors import CORS  # noqa: E402
 
 from .config import Config  # noqa: E402
-from .extensions import db  # noqa: E402
+from .extensions import db, limiter  # noqa: E402
 
 
 def create_app(config_class=Config):
@@ -15,6 +15,7 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     db.init_app(app)
+    limiter.init_app(app)
     CORS(
         app,
         resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}},
@@ -30,6 +31,12 @@ def create_app(config_class=Config):
     @app.get("/api/health")
     def health():
         return jsonify(status="ok", service="hotelease-api")
+
+    @app.errorhandler(429)
+    def ratelimited(e):
+        # Keep the shape the frontend expects ({error: ...}) instead of the
+        # default HTML page, so the login form shows a clean message.
+        return jsonify(error="Too many attempts. Please wait a minute and try again."), 429
 
     with app.app_context():
         db.create_all()

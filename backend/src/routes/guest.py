@@ -31,8 +31,16 @@ def available_rooms():
         return jsonify(error="check_out must be after check_in"), 400
 
     rooms = Room.query.filter(Room.status != "Maintenance").all()
+    # Return only what the public booking form needs. The full to_dict() also
+    # exposes internal fields (assigned staff, last-cleaned, housekeeping status)
+    # that guests should never see, so we trim the payload here.
     available = [
-        r.to_dict()
+        {
+            "room_id": r.room_id,
+            "room_number": r.room_number,
+            "room_type": r.room_type,
+            "rate_per_night": float(r.rate_per_night),
+        }
         for r in rooms
         if is_room_available(r.room_id, check_in, check_out)
     ]

@@ -1,9 +1,10 @@
 from collections import defaultdict
+from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify, session
 
 from ..extensions import db
-from ..models import Room, Booking, Payment, Staff
+from ..models import Room, Booking, Payment, Staff, DeletionRequest
 from ..middleware import role_required
 
 manager_bp = Blueprint("manager", __name__, url_prefix="/api/manager")
@@ -194,3 +195,85 @@ def delete_room(room_id):
     db.session.delete(room)
     db.session.commit()
     return jsonify(message="Room deleted")
+
+
+# --- deletion requests (manager reviews what the desk raised) ---------------
+@manager_bp.get("/deletion-requests")
+@role_required("manager")
+def list_deletion_requests():
+    """Review queue. Pending requests first, then most recently decided."""
+    status = (request.args.get("status") or "").strip()
+    query = DeletionRequest.query
+    if status:
+        query = query.filter_by(status=status)
+    rows = query.order_by(DeletionRequest.created_at.desc()).all()
+    # Pending float to the top; stable sort keeps the created-desc order within.
+    rows.sort(key=lambda r: r.status != "Pending")
+    return jsonify(deletion_requests=[r.to_dict() for r in rows])
+
+
+def _load_pending_for_review(request_id):
+    """Fetch a Pending request and enforce separation of duties.
+
+    Returns (request, None) on success, or (None, (json, status)) on error so
+    the caller can `return err`.
+    """
+    req = db.get_or_404(DeletionRequest, request_id)
+    if req.status != "Pending":
+        return None, (jsonify(error=f"This request was already {req.status.lower()}."), 409)
+    reviewer_id = session.get("staff_id")
+    # A manager cannot rubber-stamp a request they raised themselves.
+    if reviewer_id is not None and req.requested_by == reviewer_id:
+        return None, (jsonify(error="You cannot review a deletion request you raised yourself."), 403)
+    return req, None
+
+
+@manager_bp.post("/deletion-requests/<int:request_id>/approve")
+@role_required("manager")
+def approve_deletion(request_id):
+    req, err = _load_pending_for_review(request_id)
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    note = (data.get("note") or "").strip() or None
+
+    # Delete the booking if it still exists. Detach the audit record first so
+    # the FK does not block the delete; payments cascade via Booking.payments.
+    booking = db.session.get(Booking, req.booking_id) if req.booking_id else None
+    if booking is not None:
+        req.booking_id = None
+        db.session.delete(booking)
+
+    reviewer = db.session.get(Staff, session.get("staff_id"))
+    req.status = "Approved"
+    req.reviewed_by = reviewer.staff_id if reviewer else None
+    req.reviewed_by_name = reviewer.full_name if reviewer else None
+    req.review_note = note
+    req.decided_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return jsonify(
+        message="Deletion approved -- booking removed",
+        deletion_request=req.to_dict(),
+    )
+
+
+@manager_bp.post("/deletion-requests/<int:request_id>/reject")
+@role_required("manager")
+def reject_deletion(request_id):
+    req, err = _load_pending_for_review(request_id)
+    if err:
+        return err
+    data = request.get_json(silent=True) or {}
+    note = (data.get("note") or "").strip() or None
+
+    reviewer = db.session.get(Staff, session.get("staff_id"))
+    req.status = "Rejected"
+    req.reviewed_by = reviewer.staff_id if reviewer else None
+    req.reviewed_by_name = reviewer.full_name if reviewer else None
+    req.review_note = note
+    req.decided_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return jsonify(
+        message="Deletion request rejected -- booking kept",
+        deletion_request=req.to_dict(),
+    )

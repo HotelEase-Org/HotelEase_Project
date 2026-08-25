@@ -90,6 +90,37 @@
         </div>
       </div>
 
+      <!-- Booking deletion requests (manager approval required) -->
+      <div class="card" id="deletions" style="margin-bottom:20px;">
+        <div class="row-between" style="margin-bottom:10px;">
+          <h2 class="mb0">Booking Deletion Requests</h2>
+          <span class="muted" style="font-size:.8rem;">A manager must approve before a booking is removed.</span>
+        </div>
+        <table>
+          <thead><tr><th>Ref</th><th>Guest</th><th>Room</th><th>Reason</th><th>Status</th></tr></thead>
+          <tbody id="deletionsBody">
+            <tr><td colspan="5"><div class="empty">No deletion requests yet.</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- All booking records (past, present, future) -->
+      <div class="card" id="allbookings" style="margin-bottom:20px;">
+        <div class="row-between" style="margin-bottom:10px;">
+          <h2 class="mb0">All Booking Records</h2>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input id="allSearch" type="search" placeholder="Filter by reference or guest..." style="max-width:220px;">
+            <span class="muted" style="font-size:.8rem;">Most recent first</span>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Ref</th><th>Guest</th><th>Room</th><th>Stay</th><th>Status</th><th>Payment</th><th>Actions</th></tr></thead>
+          <tbody id="allBookingsBody">
+            <tr><td colspan="7"><div class="loading-block"><span class="spinner"></span> Loading...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
       <!-- Room status board -->
       <div class="card" id="rooms">
         <div class="row-between" style="margin-bottom:14px;">

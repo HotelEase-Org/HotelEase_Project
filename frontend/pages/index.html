@@ -87,11 +87,12 @@
       <!-- Confirmation (hidden until a booking is made) -->
       <div class="card hidden" id="confirmCard" style="border-top:3px solid var(--ok);">
         <h2>Booking Confirmed &#10003;</h2>
-        <p class="muted mt0">Save your reference -- you'll need it to check your booking.</p>
+        <p class="muted mt0">Save your reference -- you'll need it (with your email) to check your booking below.</p>
         <div class="ref-box">
           <div class="ref-label">YOUR BOOKING REFERENCE</div>
           <div class="ref-code" id="confirmRef">HE-000000</div>
           <div class="ref-meta" id="confirmMeta"></div>
+          <button type="button" class="btn btn-ghost btn-sm" id="copyRefBtn" style="margin-top:10px;">Copy reference</button>
         </div>
         <div class="tag-note" style="margin-top:14px;">Payment is settled in person at reception (cash / Mobile Money).</div>
       </div>

@@ -14,6 +14,24 @@ function esc(value) {
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
+/* Validation / parsing ---------------------------------------------------- */
+/** Basic email shape check. A front-desk nicety only -- the server stays the
+ *  source of truth. Rejects the obvious cases (no @, no domain, spaces). */
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value == null ? "" : value).trim());
+}
+
+/** Parse a money/number a human typed, tolerating thousands commas and a GH₵
+ *  prefix: "1,500" -> 1500, "GH₵ 2,300.50" -> 2300.5. Returns NaN when there is
+ *  no number, so callers can validate with `!(n > 0)`. Guards the classic
+ *  parseFloat("1,500") === 1 bug. */
+function parseMoney(value) {
+  if (typeof value === "number") return value;
+  const cleaned = String(value == null ? "" : value).replace(/[^0-9.\-]/g, "");
+  if (cleaned === "" || cleaned === "-" || cleaned === ".") return NaN;
+  return parseFloat(cleaned);
+}
+
 /* Formatting -------------------------------------------------------------- */
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -85,6 +103,9 @@ const STATUS_MAP = {
   Unpaid:      { cls: "crit", label: "Unpaid"      },
   Partial:     { cls: "warn", label: "Partial"     },
   Paid:        { cls: "ok",   label: "Paid"        },
+  // deletion request
+  Approved:    { cls: "ok",   label: "Approved"    },
+  Rejected:    { cls: "crit", label: "Rejected"    },
 };
 
 function badgeMeta(status) {
