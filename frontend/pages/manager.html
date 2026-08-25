@@ -17,6 +17,8 @@
       <a href="manager.html" class="active">Overview</a>
       <a href="#staff">Staff</a>
       <a href="#rooms">Rooms</a>
+      <a href="#deletions">Deletion Requests</a>
+      <a href="#allbookings">All Bookings</a>
     </nav>
     <div class="side-foot">
       <div class="side-user" id="sideUser">Loading...</div>
@@ -95,6 +97,37 @@
           </tbody>
         </table>
         <div class="tag-note" style="margin-top:12px;">Rooms tied to existing bookings cannot be deleted -- set them to Maintenance instead.</div>
+      </div>
+
+      <!-- Booking deletion requests (approve / reject) -->
+      <div class="card" id="deletions" style="margin-top:20px;">
+        <div class="row-between" style="margin-bottom:10px;">
+          <h2 class="mb0">Booking Deletion Requests</h2>
+          <span class="muted" style="font-size:.8rem;">Approving permanently removes the booking and its payments.</span>
+        </div>
+        <table>
+          <thead><tr><th>Ref</th><th>Guest</th><th>Room</th><th>Reason</th><th>Requested by</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="deletionsBody">
+            <tr><td colspan="7"><div class="loading-block"><span class="spinner"></span> Loading...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- All booking records (monitoring, read-only) -->
+      <div class="card" id="allbookings" style="margin-top:20px;">
+        <div class="row-between" style="margin-bottom:10px;">
+          <h2 class="mb0">All Booking Records</h2>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input id="allSearch" type="search" placeholder="Filter by reference or guest..." style="max-width:220px;">
+            <span class="muted" style="font-size:.8rem;">Most recent first</span>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Ref</th><th>Guest</th><th>Room</th><th>Stay</th><th>Status</th><th>Payment</th></tr></thead>
+          <tbody id="allBookingsBody">
+            <tr><td colspan="6"><div class="loading-block"><span class="spinner"></span> Loading...</div></td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </main>

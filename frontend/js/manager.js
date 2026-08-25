@@ -11,6 +11,7 @@ const MGR_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct",
 let currentUser = null;   // to block deleting your own account
 let staffCache = [];      // for prefilling the edit modal
 let roomsCache = [];
+let allBookingsCache = []; // every booking record, for the monitoring view
 
 (async function init() {
   const user = await requireRole(["manager"]);
@@ -23,8 +24,10 @@ let roomsCache = [];
   $("#addRoomBtn").addEventListener("click", () => openRoomModal());
   wireStaffActions();
   wireRoomListActions();
+  wireDeletionActions();
+  wireAllBookingsActions();
 
-  await Promise.all([loadAnalytics(), loadStaff(), loadRooms()]);
+  await Promise.all([loadAnalytics(), loadStaff(), loadRooms(), loadDeletions(), loadAllBookings()]);
 })();
 
 async function logout() {
@@ -202,6 +205,128 @@ function openStaffModal(existing) {
   });
 }
 
+/* --- booking deletion requests (approve / reject) ------------------------ */
+async function loadDeletions() {
+  const body = $("#deletionsBody");
+  if (!body) return;
+  try {
+    const { deletion_requests: rows } = await http.get("/api/manager/deletion-requests");
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="7"><div class="empty">No deletion requests.</div></td></tr>`;
+      return;
+    }
+    body.innerHTML = rows.map((d) => {
+      const actions = d.status === "Pending"
+        ? `<button class="btn btn-primary btn-sm" data-daction="approve" data-id="${d.request_id}">Approve</button>
+           <button class="btn btn-ghost btn-sm" data-daction="reject" data-id="${d.request_id}">Reject</button>`
+        : `<span class="muted" style="font-size:.8rem;">by ${esc(d.reviewed_by_name || "--")}</span>`;
+      const note = d.review_note
+        ? `<div class="muted" style="font-size:.8rem;">Note: ${esc(d.review_note)}</div>`
+        : "";
+      return `<tr>
+        <td class="tab">${esc(d.booking_reference)}</td>
+        <td>${esc(d.guest_name)}</td>
+        <td>${esc(d.room_number)}</td>
+        <td style="max-width:240px;">${esc(d.reason)}${note}</td>
+        <td>${esc(d.requested_by_name)}</td>
+        <td>${badge(d.status)}</td>
+        <td>${actions}</td>
+      </tr>`;
+    }).join("");
+  } catch (err) {
+    body.innerHTML = `<tr><td colspan="7"><div class="empty">${esc(err.message)}</div></td></tr>`;
+  }
+}
+
+function wireDeletionActions() {
+  const body = $("#deletionsBody");
+  if (!body) return;
+  body.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-daction]");
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const action = btn.dataset.daction;
+
+    if (action === "approve") {
+      if (!confirm("Approve this deletion? The booking and its payments are permanently removed.")) return;
+      setLoading(btn, true, "...");
+      try {
+        await http.post(`/api/manager/deletion-requests/${id}/approve`);
+        toast("Deletion approved -- booking removed", "success");
+        await Promise.all([loadDeletions(), loadAnalytics(), loadAllBookings()]);
+      } catch (err) { toast(err.message, "error"); setLoading(btn, false); }
+    } else if (action === "reject") {
+      const note = prompt("Reason for rejecting this request (optional):");
+      if (note === null) return;   // cancelled the prompt
+      setLoading(btn, true, "...");
+      try {
+        await http.post(`/api/manager/deletion-requests/${id}/reject`, { note });
+        toast("Request rejected -- booking kept", "success");
+        await loadDeletions();
+      } catch (err) { toast(err.message, "error"); setLoading(btn, false); }
+    }
+  });
+}
+
+/* --- all booking records (read-only monitoring view) --------------------- */
+/* Manager reuses the front-desk listing endpoint (manager is in FRONT_DESK). */
+function stayPeriod(b) {
+  const today = todayISO();
+  if (b.check_out_date < today) return { label: "Past", cls: "muted" };
+  if (b.check_in_date > today) return { label: "Upcoming", cls: "prog" };
+  return { label: "Current", cls: "busy" };
+}
+
+function renderAllBookings(rows) {
+  const body = $("#allBookingsBody");
+  if (!body) return;
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="6"><div class="empty">No booking records found.</div></td></tr>`;
+    return;
+  }
+  body.innerHTML = rows.map((b) => {
+    const p = stayPeriod(b);
+    return `<tr>
+      <td class="tab">${esc(b.reference)}</td>
+      <td>${esc(b.guest_name)}</td>
+      <td>${esc(b.room_number)}</td>
+      <td class="muted" style="font-size:.85rem;">
+        ${fmtDate(b.check_in_date)} to ${fmtDate(b.check_out_date)}
+        <span class="badge ${p.cls}" style="margin-left:4px;">${p.label}</span>
+      </td>
+      <td>${badge(b.booking_status)}</td>
+      <td>${badge(b.payment_status)}</td>
+    </tr>`;
+  }).join("");
+}
+
+async function loadAllBookings() {
+  const body = $("#allBookingsBody");
+  if (!body) return;
+  try {
+    const { bookings } = await http.get("/api/reception/bookings");
+    allBookingsCache = bookings;
+    applyAllBookingsFilter();
+  } catch (err) {
+    body.innerHTML = `<tr><td colspan="6"><div class="empty">${esc(err.message)}</div></td></tr>`;
+  }
+}
+
+function applyAllBookingsFilter() {
+  const q = ($("#allSearch")?.value || "").trim().toLowerCase();
+  const rows = q
+    ? allBookingsCache.filter((b) =>
+        (b.reference || "").toLowerCase().includes(q) ||
+        (b.guest_name || "").toLowerCase().includes(q))
+    : allBookingsCache;
+  renderAllBookings(rows);
+}
+
+function wireAllBookingsActions() {
+  const input = $("#allSearch");
+  if (input) input.addEventListener("input", applyAllBookingsFilter);
+}
+
 /* --- rooms (aggregated by type, matching the wireframe) ------------------ */
 async function loadRooms() {
   try {
@@ -315,7 +440,7 @@ function openRoomModal(existing) {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     clearAlert($("#mAlert"));
-    const rate = parseFloat(form.rate_per_night.value);
+    const rate = parseMoney(form.rate_per_night.value);
     const payload = {
       room_number: form.room_number.value.trim(),
       room_type: form.room_type.value.trim(),
