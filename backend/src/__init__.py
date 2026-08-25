@@ -15,6 +15,18 @@ def create_app(config_class=Config):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(config_class)
 
+    # Fail closed on the session signing key. A Flask session is a signed cookie,
+    # so its security rests entirely on SECRET_KEY. A real (non-SQLite) deployment
+    # must never silently fall back to the built-in development key -- if it did,
+    # anyone could forge a manager session. Local dev and the test suite run on
+    # SQLite and are intentionally exempt.
+    _db_uri = app.config.get("SQLALCHEMY_DATABASE_URI") or ""
+    if not _db_uri.startswith("sqlite") and app.config.get("SECRET_KEY") in (None, "", "dev-secret-change-me"):
+        raise RuntimeError(
+            "SECRET_KEY must be set to a strong random value in production; "
+            "refusing to start with the insecure development default."
+        )
+
     # Behind nginx, the real client IP arrives in X-Forwarded-For (nginx appends
     # the true remote_addr, so the right-most hop is trustworthy). Without this,
     # Flask sees every request as 127.0.0.1 and per-IP rate limits collapse into

@@ -1,4 +1,5 @@
 from datetime import date
+import re
 
 from flask import Blueprint, request, jsonify
 
@@ -12,6 +13,18 @@ from ..controllers.availability import (
 )
 
 guest_bp = Blueprint("guest", __name__, url_prefix="/api")
+
+# Bounds on a single public booking request. A Pending booking immediately holds
+# the room, so without these one anonymous request could tie a room up for years
+# (or for an absurd stay length) and deny it to real guests. These caps keep an
+# unconfirmed hold within a sane range.
+MAX_STAY_NIGHTS = 30
+MAX_ADVANCE_DAYS = 365
+
+# Pragmatic email shape check (not full RFC 5322): exactly one @, no whitespace,
+# and a dot in the domain. Enough to reject typos and junk without rejecting
+# valid-but-unusual addresses.
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def _parse_date(value):
@@ -67,9 +80,19 @@ def create_booking():
 
     required = ["full_name", "email", "phone_number", "room_id",
                 "check_in_date", "check_out_date"]
-    missing = [f for f in required if not data.get(f)]
+
+    def _field(name):
+        # Strip strings before the presence test so a whitespace-only value
+        # ("   ") counts as missing rather than passing and collapsing to "".
+        v = data.get(name)
+        return v.strip() if isinstance(v, str) else v
+
+    missing = [f for f in required if not _field(f)]
     if missing:
         return jsonify(error=f"Missing fields: {', '.join(missing)}"), 400
+
+    if not _EMAIL_RE.match(_field("email") or ""):
+        return jsonify(error="A valid email address is required"), 400
 
     # room_id arrives as an int in JSON but a string in a form; coerce safely.
     try:
@@ -86,10 +109,21 @@ def create_booking():
         return jsonify(error="check_out must be after check_in"), 400
     if check_in < date.today():
         return jsonify(error="Check-in date cannot be in the past"), 400
+    if nights_between(check_in, check_out) > MAX_STAY_NIGHTS:
+        return jsonify(error=f"A booking cannot exceed {MAX_STAY_NIGHTS} nights"), 400
+    if (check_in - date.today()).days > MAX_ADVANCE_DAYS:
+        return jsonify(error="Check-in date is too far in the future"), 400
 
     room = db.session.get(Room, room_id)
     if room is None:
         return jsonify(error="Room not found"), 404
+
+    # Out-of-service rooms are hidden from the public listing; enforce the same
+    # rule on the create path so a guessed/sequential room_id cannot book a room
+    # that was deliberately withheld. Same generic 409 as an unavailable room so
+    # room status is not disclosed to the caller.
+    if room.status == "Maintenance":
+        return jsonify(error="Room is not available for those dates"), 409
 
     if not is_room_available(room.room_id, check_in, check_out):
         return jsonify(error="Room is not available for those dates"), 409
